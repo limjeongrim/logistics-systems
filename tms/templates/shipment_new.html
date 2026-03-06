@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+{% block title %}New Shipment{% endblock %}
+{% block page_title %}New Shipment{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>New Shipment Order</h1>
+  <p>Register a new transportation order — click on the map to set origin and destination</p>
+</div>
+
+<div class="row g-4">
+  <!-- Form -->
+  <div class="col-lg-5">
+    <form method="POST" id="shipmentForm">
+      <!-- Customer info -->
+      <div class="card mb-4">
+        <div class="card-header"><h5><i class="fa-solid fa-user me-2 text-primary"></i>Customer Info</h5></div>
+        <div class="card-body">
+          <div class="mb-3">
+            <label class="form-label">Customer Name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" name="customer_name" required placeholder="Company or person name">
+          </div>
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label">Phone</label>
+              <input type="text" class="form-control" name="customer_phone" placeholder="010-xxxx-xxxx">
+            </div>
+            <div class="col-6">
+              <label class="form-label">Email</label>
+              <input type="email" class="form-control" name="customer_email" placeholder="email@example.com">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Origin & destination -->
+      <div class="card mb-4">
+        <div class="card-header"><h5><i class="fa-solid fa-location-dot me-2 text-primary"></i>Route</h5></div>
+        <div class="card-body">
+          <div class="alert alert-info py-2 small mb-3">
+            <i class="fa-solid fa-circle-info me-1"></i>
+            Click on the map to set <strong>Origin</strong> first, then <strong>Destination</strong>.
+            Or use the preset cities below.
+          </div>
+
+          <!-- Preset city shortcuts -->
+          <div class="mb-3">
+            <label class="form-label small">Quick Preset — Origin</label>
+            <div class="d-flex flex-wrap gap-1" id="originPresets">
+              {% for city, coords in [('Seoul',(37.5665,126.9780)),('Busan',(35.1796,129.0756)),
+                ('Daegu',(35.8714,128.6014)),('Incheon',(37.4563,126.7052)),
+                ('Daejeon',(36.3504,127.3845)),('Gwangju',(35.1595,126.8526)),
+                ('Ulsan',(35.5384,129.3114)),('Suwon',(37.2636,127.0286))] %}
+              <button type="button" class="btn btn-sm btn-outline-secondary preset-btn"
+                      data-target="origin" data-city="{{ city }}"
+                      data-lat="{{ coords[0] }}" data-lng="{{ coords[1] }}">
+                {{ city }}
+              </button>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Origin Address <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" name="origin_address" id="originAddr"
+                   required placeholder="Pickup location">
+            <input type="hidden" name="origin_lat" id="originLat">
+            <input type="hidden" name="origin_lng" id="originLng">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small">Quick Preset — Destination</label>
+            <div class="d-flex flex-wrap gap-1">
+              {% for city, coords in [('Seoul',(37.5665,126.9780)),('Busan',(35.1796,129.0756)),
+                ('Daegu',(35.8714,128.6014)),('Incheon',(37.4563,126.7052)),
+                ('Daejeon',(36.3504,127.3845)),('Gwangju',(35.1595,126.8526)),
+                ('Ulsan',(35.5384,129.3114)),('Suwon',(37.2636,127.0286))] %}
+              <button type="button" class="btn btn-sm btn-outline-secondary preset-btn"
+                      data-target="dest" data-city="{{ city }}"
+                      data-lat="{{ coords[0] }}" data-lng="{{ coords[1] }}">
+                {{ city }}
+              </button>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Destination Address <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" name="dest_address" id="destAddr"
+                   required placeholder="Delivery location">
+            <input type="hidden" name="dest_lat" id="destLat">
+            <input type="hidden" name="dest_lng" id="destLng">
+          </div>
+
+          <!-- Distance + cost preview -->
+          <div id="routePreview" class="d-none p-3 rounded-3" style="background:#f0f9ff;border:1px solid #bae6fd;">
+            <div class="row g-2 text-center">
+              <div class="col-4">
+                <div class="small text-muted">Distance</div>
+                <div class="fw-700" id="previewDist">—</div>
+              </div>
+              <div class="col-4">
+                <div class="small text-muted">Est. Duration</div>
+                <div class="fw-700" id="previewTime">—</div>
+              </div>
+              <div class="col-4">
+                <div class="small text-muted">Est. Cost</div>
+                <div class="fw-700 text-primary" id="previewCost">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cargo details -->
+      <div class="card mb-4">
+        <div class="card-header"><h5><i class="fa-solid fa-box me-2 text-primary"></i>Cargo Details</h5></div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-6">
+              <label class="form-label">Weight (kg)</label>
+              <input type="number" class="form-control" name="weight_kg" id="weightKg"
+                     min="0" step="0.1" placeholder="0" value="0">
+            </div>
+            <div class="col-6">
+              <label class="form-label">Volume (m³)</label>
+              <input type="number" class="form-control" name="volume_m3" id="volumeM3"
+                     min="0" step="0.1" placeholder="0" value="0">
+            </div>
+            <div class="col-12">
+              <label class="form-label">Priority</label>
+              <select class="form-select" name="priority" id="prioritySel">
+                <option value="standard">Standard (×1.0)</option>
+                <option value="express">Express (×1.3)</option>
+                <option value="urgent">Urgent (×1.6)</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Notes</label>
+              <textarea class="form-control" name="notes" rows="2" placeholder="Special handling, fragile items..."></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary w-100">
+        <i class="fa-solid fa-paper-plane me-2"></i>Create Shipment Order
+      </button>
+    </form>
+  </div>
+
+  <!-- Map -->
+  <div class="col-lg-7">
+    <div class="card sticky-top" style="top:80px;">
+      <div class="card-header">
+        <h5><i class="fa-solid fa-map me-2 text-primary"></i>Route Map</h5>
+        <div class="small text-muted" id="mapInstruction">Click to set <strong>Origin</strong></div>
+      </div>
+      <div id="newShipMap" style="height:580px;"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const map = L.map('newShipMap').setView([36.5, 127.5], 7);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap contributors', maxZoom: 18
+}).addTo(map);
+
+let originMarker = null, destMarker = null, routeLine = null;
+let step = 'origin'; // 'origin' or 'dest'
+
+const greenIcon = L.icon({
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconSize: [25,41], iconAnchor: [12,41]
+});
+
+function haversine(lat1, lng1, lat2, lng2) {
+  const R = 6371, f1 = lat1*Math.PI/180, f2 = lat2*Math.PI/180;
+  const a = Math.sin((lat2-lat1)*Math.PI/360)**2 +
+            Math.cos(f1)*Math.cos(f2)*Math.sin((lng2-lng1)*Math.PI/360)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function updatePreview() {
+  const olat = parseFloat(document.getElementById('originLat').value);
+  const olng = parseFloat(document.getElementById('originLng').value);
+  const dlat = parseFloat(document.getElementById('destLat').value);
+  const dlng = parseFloat(document.getElementById('destLng').value);
+  if (!olat || !dlat) return;
+
+  const dist = haversine(olat, olng, dlat, dlng);
+  const hrs  = dist / 80;  // avg 80 km/h
+  const pri  = document.getElementById('prioritySel').value;
+  const wkg  = parseFloat(document.getElementById('weightKg').value) || 0;
+  const vm3  = parseFloat(document.getElementById('volumeM3').value) || 0;
+
+  fetch(`/api/freight_estimate?lat1=${olat}&lng1=${olng}&lat2=${dlat}&lng2=${dlng}&weight=${wkg}&volume=${vm3}&priority=${pri}`)
+    .then(r => r.json()).then(d => {
+      document.getElementById('previewDist').textContent = d.distance_km.toFixed(0) + ' km';
+      document.getElementById('previewTime').textContent =
+        (hrs < 1 ? Math.round(hrs * 60) + ' min' : hrs.toFixed(1) + ' hr');
+      document.getElementById('previewCost').textContent = '$' + d.freight_cost.toFixed(2);
+      document.getElementById('routePreview').classList.remove('d-none');
+    });
+
+  // Update polyline
+  if (routeLine) map.removeLayer(routeLine);
+  routeLine = L.polyline([[olat, olng], [dlat, dlng]], {
+    color: '#0891b2', weight: 3, dashArray: '8 5', opacity: .8
+  }).addTo(map);
+  map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
+}
+
+function setPoint(target, lat, lng, city) {
+  if (target === 'origin') {
+    if (originMarker) map.removeLayer(originMarker);
+    originMarker = L.marker([lat, lng]).addTo(map).bindPopup(`<b>Origin:</b> ${city}`).openPopup();
+    document.getElementById('originLat').value  = lat;
+    document.getElementById('originLng').value  = lng;
+    document.getElementById('originAddr').value = city + ', South Korea';
+    step = 'dest';
+    document.getElementById('mapInstruction').innerHTML = 'Now click to set <strong>Destination</strong>';
+  } else {
+    if (destMarker) map.removeLayer(destMarker);
+    destMarker = L.marker([lat, lng], { icon: greenIcon }).addTo(map)
+      .bindPopup(`<b>Destination:</b> ${city}`).openPopup();
+    document.getElementById('destLat').value  = lat;
+    document.getElementById('destLng').value  = lng;
+    document.getElementById('destAddr').value = city + ', South Korea';
+    step = 'origin';
+    document.getElementById('mapInstruction').innerHTML = 'Click to update <strong>Origin</strong>';
+  }
+  updatePreview();
+}
+
+map.on('click', function(e) {
+  const addr = `${e.latlng.lat.toFixed(4)}, ${e.latlng.lng.toFixed(4)}`;
+  setPoint(step, e.latlng.lat, e.latlng.lng, addr);
+});
+
+// Preset city buttons
+document.querySelectorAll('.preset-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    setPoint(this.dataset.target, parseFloat(this.dataset.lat),
+             parseFloat(this.dataset.lng), this.dataset.city);
+  });
+});
+
+// Re-calculate on cargo change
+['weightKg', 'volumeM3', 'prioritySel'].forEach(id => {
+  document.getElementById(id).addEventListener('change', updatePreview);
+});
+</script>
+{% endblock %}

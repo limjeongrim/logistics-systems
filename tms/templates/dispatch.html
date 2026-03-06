@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% block title %}Dispatch{% endblock %}
+{% block page_title %}Dispatch{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Vehicle Dispatch</h1>
+  <p>Assign available vehicles to pending shipments</p>
+</div>
+
+<div class="row g-4">
+  <!-- Pending Shipments -->
+  <div class="col-lg-5">
+    <div class="card h-100">
+      <div class="card-header">
+        <h5><i class="fa-solid fa-box me-2 text-warning"></i>
+          Pending Shipments
+          <span class="badge bg-warning text-dark ms-2">{{ pending_shipments|length }}</span>
+        </h5>
+      </div>
+      <div class="card-body p-2" style="max-height:600px;overflow-y:auto;">
+        {% for s in pending_shipments %}
+        <div class="dispatch-card" id="ship-{{ s.id }}" onclick="selectShipment({{ s.id }}, '{{ s.shipment_number }}', {{ s.weight_kg }}, '{{ s.priority }}')">
+          <div class="d-flex justify-content-between align-items-start mb-1">
+            <span class="fw-700 font-monospace text-primary small">{{ s.shipment_number }}</span>
+            <span class="badge bg-{{ s.priority | priority_badge }}-subtle text-{{ s.priority | priority_badge }}">
+              {{ s.priority | title }}
+            </span>
+          </div>
+          <div class="fw-500 small mb-1">{{ s.customer_name }}</div>
+          <div class="text-muted" style="font-size:.78rem;">
+            <i class="fa-solid fa-location-dot text-success me-1"></i>{{ s.origin_address.split(',')[0] }}
+            <i class="fa-solid fa-arrow-right mx-1"></i>
+            <i class="fa-solid fa-location-dot text-danger me-1"></i>{{ s.destination_address.split(',')[0] }}
+          </div>
+          <div class="d-flex gap-3 mt-1" style="font-size:.75rem; color:#64748b;">
+            <span><i class="fa-solid fa-weight-hanging me-1"></i>{{ s.weight_kg }} kg</span>
+            <span><i class="fa-solid fa-road me-1"></i>{{ "%.0f"|format(s.distance_km or 0) }} km</span>
+            <span><i class="fa-solid fa-dollar-sign me-1"></i>{{ "%.2f"|format(s.freight_cost or 0) }}</span>
+          </div>
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-5">
+          <i class="fa-solid fa-circle-check fa-2x mb-2 text-success d-block"></i>
+          No pending shipments!
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Assignment form + Active dispatches -->
+  <div class="col-lg-7">
+    <!-- Assignment form -->
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5><i class="fa-solid fa-link me-2 text-primary"></i>Assign Vehicle</h5>
+      </div>
+      <div class="card-body">
+        <div id="selectionHint" class="alert alert-info py-2 small mb-3">
+          <i class="fa-solid fa-circle-info me-1"></i>
+          Select a shipment from the left panel to assign a vehicle.
+        </div>
+        <form method="POST" action="{{ url_for('assign_vehicle') }}" id="dispatchForm">
+          <input type="hidden" name="shipment_id" id="selectedShipmentId">
+          <div class="mb-3">
+            <label class="form-label">Selected Shipment</label>
+            <div id="selectedShipmentLabel" class="form-control bg-light text-muted" style="cursor:default;">
+              None selected
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Available Vehicle <span class="text-danger">*</span></label>
+            <select class="form-select" name="vehicle_id" id="vehicleSelect" required>
+              <option value="">— Select vehicle —</option>
+              {% for v in available_vehicles %}
+              <option value="{{ v.id }}"
+                data-cap="{{ v.capacity_kg }}"
+                data-type="{{ v.type }}"
+                data-plate="{{ v.plate }}"
+                data-driver="{{ v.driver_name }}">
+                {{ v.plate }} — {{ v.type_display() }} ({{ v.capacity_kg }}kg) — {{ v.driver_name }}
+              </option>
+              {% endfor %}
+            </select>
+            <div id="vehicleWarning" class="text-danger small mt-1 d-none">
+              <i class="fa-solid fa-triangle-exclamation me-1"></i>
+              This vehicle may not have sufficient capacity.
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Driver Notes</label>
+            <textarea class="form-control" name="driver_notes" rows="2"
+                      placeholder="Special instructions for the driver..."></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary w-100" id="assignBtn" disabled>
+            <i class="fa-solid fa-truck-ramp-box me-2"></i>Assign & Dispatch
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Active dispatches -->
+    <div class="card">
+      <div class="card-header">
+        <h5><i class="fa-solid fa-route me-2 text-primary"></i>Active Dispatches</h5>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table mb-0">
+            <thead><tr><th>Shipment</th><th>Vehicle / Driver</th><th>Route</th><th>Status</th><th>Assigned</th></tr></thead>
+            <tbody>
+              {% for d in active_dispatches %}
+              <tr>
+                <td>
+                  <a href="{{ url_for('shipment_detail', sid=d.shipment_id) }}"
+                     class="fw-600 text-decoration-none font-monospace small text-primary">
+                    {{ d.shipment.shipment_number }}
+                  </a>
+                </td>
+                <td>
+                  <div class="fw-500 small">{{ d.vehicle.plate }}</div>
+                  <div class="text-muted small">{{ d.vehicle.driver_name }}</div>
+                </td>
+                <td class="text-muted small">
+                  {{ d.shipment.origin_address.split(',')[0] }}
+                  <i class="fa-solid fa-arrow-right mx-1" style="font-size:.65rem;"></i>
+                  {{ d.shipment.destination_address.split(',')[0] }}
+                </td>
+                <td>
+                  <span class="badge bg-{{ d.shipment.status | status_badge }}-subtle text-{{ d.shipment.status | status_badge }}">
+                    {{ d.shipment.status.replace('_',' ') | title }}
+                  </span>
+                </td>
+                <td class="text-muted small">{{ d.assigned_at.strftime('%b %d, %H:%M') }}</td>
+              </tr>
+              {% else %}
+              <tr><td colspan="5" class="text-center text-muted py-3">No active dispatches.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let selectedWeight = 0;
+
+function selectShipment(id, number, weight, priority) {
+  document.querySelectorAll('.dispatch-card').forEach(c => c.classList.remove('selected'));
+  const card = document.getElementById('ship-' + id);
+  if (card) card.classList.add('selected');
+
+  document.getElementById('selectedShipmentId').value    = id;
+  document.getElementById('selectedShipmentLabel').textContent = number;
+  document.getElementById('selectedShipmentLabel').classList.remove('text-muted');
+  document.getElementById('selectionHint').classList.add('d-none');
+  document.getElementById('assignBtn').disabled = false;
+  selectedWeight = weight;
+  checkCapacity();
+}
+
+function checkCapacity() {
+  const sel = document.getElementById('vehicleSelect');
+  const opt = sel.options[sel.selectedIndex];
+  const warn = document.getElementById('vehicleWarning');
+  if (opt && opt.dataset.cap) {
+    warn.classList.toggle('d-none', parseFloat(opt.dataset.cap) >= selectedWeight);
+  }
+}
+
+document.getElementById('vehicleSelect').addEventListener('change', checkCapacity);
+</script>
+{% endblock %}

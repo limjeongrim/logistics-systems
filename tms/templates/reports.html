@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+{% block title %}Reports{% endblock %}
+{% block page_title %}Reports & Analytics{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Reports &amp; Analytics</h1>
+  <p>Delivery performance, cost analysis, and fleet utilization</p>
+</div>
+
+<!-- KPI row -->
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-xl-3">
+    <div class="kpi-card">
+      <div class="kpi-icon green"><i class="fa-solid fa-circle-check"></i></div>
+      <div>
+        <div class="kpi-value">{{ total_delivered }}</div>
+        <div class="kpi-label">Total Delivered</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="kpi-card">
+      <div class="kpi-icon cyan"><i class="fa-solid fa-clock"></i></div>
+      <div>
+        <div class="kpi-value">{{ on_time_pct }}%</div>
+        <div class="kpi-label">On-Time Rate</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="kpi-card">
+      <div class="kpi-icon blue"><i class="fa-solid fa-dollar-sign"></i></div>
+      <div>
+        <div class="kpi-value">${{ "{:,.0f}".format(total_revenue) }}</div>
+        <div class="kpi-label">Total Revenue</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="kpi-card">
+      <div class="kpi-icon amber"><i class="fa-solid fa-road"></i></div>
+      <div>
+        <div class="kpi-value">{{ avg_dist }} km</div>
+        <div class="kpi-label">Avg. Distance</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Charts row 1 -->
+<div class="row g-4 mb-4">
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header"><h5><i class="fa-solid fa-chart-pie me-2 text-primary"></i>Shipment Status</h5></div>
+      <div class="card-body d-flex align-items-center justify-content-center">
+        <div style="height:240px; width:100%;"><canvas id="statusChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header"><h5><i class="fa-solid fa-chart-bar me-2 text-primary"></i>Monthly Shipments</h5></div>
+      <div class="card-body">
+        <div style="height:240px;"><canvas id="monthlyChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header"><h5><i class="fa-solid fa-truck me-2 text-primary"></i>Fleet Utilization</h5></div>
+      <div class="card-body d-flex align-items-center justify-content-center">
+        <div style="height:240px; width:100%;"><canvas id="fleetChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Charts row 2 -->
+<div class="row g-4 mb-4">
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header"><h5><i class="fa-solid fa-chart-line me-2 text-primary"></i>Monthly Revenue</h5></div>
+      <div class="card-body">
+        <div style="height:200px;"><canvas id="revenueChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header"><h5><i class="fa-solid fa-layer-group me-2 text-primary"></i>Priority Breakdown</h5></div>
+      <div class="card-body d-flex align-items-center">
+        <div style="height:200px; width:100%;"><canvas id="priorityChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Top customers + On-time meter -->
+<div class="row g-4">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header"><h5><i class="fa-solid fa-star me-2 text-warning"></i>Top Customers</h5></div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table mb-0">
+            <thead><tr><th>Customer</th><th>Shipments</th><th>Total Cost</th><th>Share</th></tr></thead>
+            <tbody>
+              {% set total_count = all_s | length %}
+              {% for cust, cnt in top_customers %}
+              <tr>
+                <td class="fw-500">{{ cust }}</td>
+                <td>{{ cnt }}</td>
+                <td class="text-primary fw-600">${{ "{:,.2f}".format(cust_costs[cust]) }}</td>
+                <td style="min-width:160px;">
+                  {% set pct = ((cnt / total_count) * 100) | int %}
+                  <div class="d-flex align-items-center gap-2">
+                    <div class="progress flex-grow-1" style="height:6px;">
+                      <div class="progress-bar bg-primary" style="width:{{ pct }}%"></div>
+                    </div>
+                    <span class="small text-muted">{{ pct }}%</span>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header"><h5><i class="fa-solid fa-gauge me-2 text-primary"></i>On-Time Delivery</h5></div>
+      <div class="card-body text-center">
+        <div style="position:relative; display:inline-block; margin: 12px 0;">
+          <canvas id="otGauge" width="200" height="110"></canvas>
+          <div style="position:absolute;bottom:10px;left:0;right:0;text-align:center;">
+            <div style="font-size:2rem;font-weight:700;color:{% if on_time_pct >= 80 %}#22c55e{% elif on_time_pct >= 60 %}#f59e0b{% else %}#ef4444{% endif %};">
+              {{ on_time_pct }}%
+            </div>
+            <div style="font-size:.75rem;color:#64748b;">On-Time Rate</div>
+          </div>
+        </div>
+        <div class="d-flex justify-content-around mt-2">
+          <div class="text-center">
+            <div class="fw-700 text-success">{{ total_delivered }}</div>
+            <div class="small text-muted">Delivered</div>
+          </div>
+          <div class="text-center">
+            <div class="fw-700 text-primary">${{ "{:,.0f}".format(total_revenue / total_delivered if total_delivered else 0) }}</div>
+            <div class="small text-muted">Avg. Cost</div>
+          </div>
+          <div class="text-center">
+            <div class="fw-700 text-muted">{{ avg_dist }}</div>
+            <div class="small text-muted">Avg. km</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const statusData   = {{ status_json   | safe }};
+const monthlyData  = {{ monthly_json  | safe }};
+const fleetData    = {{ vehicle_util_json | safe }};
+const priorityData = {{ priority_json | safe }};
+
+const statusColors = { pending:'#94a3b8', dispatched:'#06b6d4', in_transit:'#3b82f6',
+                       delivered:'#22c55e', cancelled:'#ef4444' };
+const priColors    = { standard:'#94a3b8', express:'#f59e0b', urgent:'#ef4444' };
+
+// Status donut
+new Chart(document.getElementById('statusChart'), {
+  type: 'doughnut',
+  data: { labels: Object.keys(statusData).map(s => s.replace('_',' ')),
+    datasets: [{ data: Object.values(statusData),
+      backgroundColor: Object.keys(statusData).map(s => statusColors[s] || '#94a3b8'),
+      borderWidth: 2, borderColor: '#fff' }]
+  },
+  options: { responsive:true, maintainAspectRatio:false, cutout:'60%',
+    plugins: { legend: { position:'bottom', labels: { font:{size:11}, padding:10 } } } }
+});
+
+// Monthly bar
+new Chart(document.getElementById('monthlyChart'), {
+  type: 'bar',
+  data: { labels: monthlyData.map(d => d.month),
+    datasets: [{ label:'Shipments', data: monthlyData.map(d => d.count),
+      backgroundColor: 'rgba(8,145,178,.7)', borderRadius:4 }]
+  },
+  options: { responsive:true, maintainAspectRatio:false,
+    plugins: { legend: { display:false } },
+    scales: { x: { grid:{display:false}, ticks:{font:{size:11}} },
+              y: { beginAtZero:true, grid:{color:'#f1f5f9'}, ticks:{font:{size:11}} } } }
+});
+
+// Fleet donut
+new Chart(document.getElementById('fleetChart'), {
+  type: 'doughnut',
+  data: { labels: ['Available','On Route','Maintenance'],
+    datasets: [{ data: [fleetData.available||0, fleetData.on_route||0, fleetData.maintenance||0],
+      backgroundColor: ['#22c55e','#0891b2','#f59e0b'],
+      borderWidth: 2, borderColor: '#fff' }]
+  },
+  options: { responsive:true, maintainAspectRatio:false, cutout:'60%',
+    plugins: { legend: { position:'bottom', labels: { font:{size:11}, padding:10 } } } }
+});
+
+// Revenue line
+new Chart(document.getElementById('revenueChart'), {
+  type: 'line',
+  data: { labels: monthlyData.map(d => d.month),
+    datasets: [{ label:'Revenue ($)', data: monthlyData.map(d => d.cost),
+      borderColor:'#0891b2', backgroundColor:'rgba(8,145,178,.08)',
+      tension:0.4, fill:true, pointRadius:4, borderWidth:2 }]
+  },
+  options: { responsive:true, maintainAspectRatio:false,
+    plugins: { legend: { display:false } },
+    scales: { x: { grid:{display:false}, ticks:{font:{size:11}} },
+              y: { beginAtZero:true, grid:{color:'#f1f5f9'}, ticks:{font:{size:11},
+                   callback: v => '$' + v.toLocaleString() } } } }
+});
+
+// Priority bar
+new Chart(document.getElementById('priorityChart'), {
+  type: 'bar',
+  data: { labels: Object.keys(priorityData).map(s => s.charAt(0).toUpperCase() + s.slice(1)),
+    datasets: [{ label:'Shipments', data: Object.values(priorityData),
+      backgroundColor: Object.keys(priorityData).map(s => priColors[s] || '#94a3b8'),
+      borderRadius:4 }]
+  },
+  options: { responsive:true, maintainAspectRatio:false,
+    plugins: { legend: { display:false } },
+    scales: { x: { grid:{display:false} }, y: { beginAtZero:true, grid:{color:'#f1f5f9'} } } }
+});
+
+// On-time gauge (semi-circle)
+const gtx = document.getElementById('otGauge').getContext('2d');
+const pct = {{ on_time_pct }} / 100;
+const color = pct >= 0.8 ? '#22c55e' : pct >= 0.6 ? '#f59e0b' : '#ef4444';
+gtx.clearRect(0,0,200,110);
+// Background arc
+gtx.beginPath(); gtx.arc(100,100,80,-Math.PI,0); gtx.lineWidth=14;
+gtx.strokeStyle='#e2e8f0'; gtx.stroke();
+// Value arc
+gtx.beginPath(); gtx.arc(100,100,80,-Math.PI,-Math.PI + Math.PI * pct);
+gtx.lineWidth=14; gtx.strokeStyle=color; gtx.stroke();
+</script>
+{% endblock %}

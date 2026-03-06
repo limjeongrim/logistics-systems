@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}Shipments{% endblock %}
+{% block page_title %}Shipments{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex align-items-start justify-content-between">
+  <div>
+    <h1>Shipments</h1>
+    <p>Manage all transportation orders</p>
+  </div>
+  <a href="{{ url_for('new_shipment') }}" class="btn btn-primary">
+    <i class="fa-solid fa-plus me-2"></i>New Shipment
+  </a>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+  <div class="card-body py-3">
+    <form method="GET" class="row g-2 align-items-end">
+      <div class="col-sm-4">
+        <input type="text" name="q" class="form-control form-control-sm"
+               placeholder="Search shipment # or customer..." value="{{ search }}">
+      </div>
+      <div class="col-sm-3">
+        <select name="status" class="form-select form-select-sm">
+          <option value="">All Statuses</option>
+          {% for st in ['pending','dispatched','in_transit','delivered','cancelled'] %}
+          <option value="{{ st }}" {% if st == status_f %}selected{% endif %}>
+            {{ st.replace('_',' ') | title }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-sm-2">
+        <select name="priority" class="form-select form-select-sm">
+          <option value="">All Priorities</option>
+          {% for p in ['standard','express','urgent'] %}
+          <option value="{{ p }}" {% if p == priority_f %}selected{% endif %}>{{ p | title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto d-flex gap-2">
+        <button type="submit" class="btn btn-primary btn-sm"><i class="fa-solid fa-filter me-1"></i>Filter</button>
+        <a href="{{ url_for('shipments') }}" class="btn btn-outline-secondary btn-sm">Clear</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h5><i class="fa-solid fa-box me-2 text-primary"></i>
+      Shipment Orders <span class="badge bg-secondary ms-2">{{ shipments|length }}</span>
+    </h5>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table mb-0">
+        <thead>
+          <tr>
+            <th>Shipment #</th>
+            <th>Customer</th>
+            <th>Origin</th>
+            <th>Destination</th>
+            <th>Weight</th>
+            <th>Distance</th>
+            <th>Priority</th>
+            <th>Status</th>
+            <th>Est. Delivery</th>
+            <th>Cost</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in shipments %}
+          <tr>
+            <td>
+              <a href="{{ url_for('shipment_detail', sid=s.id) }}"
+                 class="fw-600 text-decoration-none text-primary font-monospace small">
+                {{ s.shipment_number }}
+              </a>
+              {% if s.stops %}<span class="badge bg-info-subtle text-info ms-1" style="font-size:.65rem;">{{ s.stops|length }} stop(s)</span>{% endif %}
+            </td>
+            <td>
+              <div class="fw-500">{{ s.customer_name }}</div>
+              <div class="text-muted small">{{ s.customer_phone or '' }}</div>
+            </td>
+            <td class="text-muted small">{{ s.origin_address.split(',')[0] }}</td>
+            <td class="text-muted small">{{ s.destination_address.split(',')[0] }}</td>
+            <td class="text-muted small">{{ s.weight_kg }} kg</td>
+            <td class="text-muted small">{{ "%.0f"|format(s.distance_km or 0) }} km</td>
+            <td>
+              <span class="badge bg-{{ s.priority | priority_badge }}-subtle text-{{ s.priority | priority_badge }}">
+                {{ s.priority | title }}
+              </span>
+            </td>
+            <td>
+              <span class="badge bg-{{ s.status | status_badge }}-subtle text-{{ s.status | status_badge }}">
+                {{ s.status.replace('_',' ') | title }}
+              </span>
+            </td>
+            <td class="text-muted small">
+              {{ s.estimated_delivery.strftime('%b %d') if s.estimated_delivery else '—' }}
+              {% if s.status == 'delivered' and s.actual_delivery %}
+                <br><span class="text-success" style="font-size:.7rem;">
+                  Actual: {{ s.actual_delivery.strftime('%b %d') }}
+                </span>
+              {% endif %}
+            </td>
+            <td class="small fw-600">${{ "%.2f"|format(s.freight_cost or 0) }}</td>
+            <td>
+              <a href="{{ url_for('shipment_detail', sid=s.id) }}"
+                 class="btn btn-sm btn-outline-primary">
+                <i class="fa-solid fa-eye me-1"></i>View
+              </a>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="11" class="text-center text-muted py-5">
+            <i class="fa-solid fa-box fa-2x mb-2 d-block opacity-25"></i>
+            No shipments found.
+          </td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

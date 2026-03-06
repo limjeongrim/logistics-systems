@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{% block title %}{{ s.shipment_number }}{% endblock %}
+{% block page_title %}{{ s.shipment_number }}{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex align-items-start justify-content-between">
+  <div>
+    <h1>{{ s.shipment_number }}</h1>
+    <p>
+      <span class="badge bg-{{ s.status | status_badge }}-subtle text-{{ s.status | status_badge }} me-2">
+        {{ s.status.replace('_',' ') | title }}
+      </span>
+      <span class="badge bg-{{ s.priority | priority_badge }}-subtle text-{{ s.priority | priority_badge }} me-2">
+        {{ s.priority | title }}
+      </span>
+      Created {{ s.created_at.strftime('%B %d, %Y %H:%M') }}
+    </p>
+  </div>
+  <a href="{{ url_for('shipments') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="fa-solid fa-arrow-left me-1"></i>Back
+  </a>
+</div>
+
+<div class="row g-4">
+  <!-- Left column -->
+  <div class="col-lg-4">
+    <!-- Shipment info -->
+    <div class="card mb-4">
+      <div class="card-header"><h6><i class="fa-solid fa-circle-info me-2 text-primary"></i>Shipment Details</h6></div>
+      <div class="card-body">
+        <table class="table table-sm mb-0" style="font-size:.875rem;">
+          <tr><td class="text-muted">Customer</td><td class="fw-500">{{ s.customer_name }}</td></tr>
+          <tr><td class="text-muted">Phone</td><td>{{ s.customer_phone or '—' }}</td></tr>
+          <tr><td class="text-muted">Email</td><td class="small">{{ s.customer_email or '—' }}</td></tr>
+          <tr><td class="text-muted" colspan="2" style="padding-top:10px;"><strong>Route</strong></td></tr>
+          <tr><td class="text-muted">Origin</td>
+              <td><span class="small">{{ s.origin_address }}</span></td></tr>
+          {% if s.stops %}
+          <tr><td class="text-muted">Stops</td>
+              <td>{% for st in s.stops %}<span class="badge bg-info-subtle text-info me-1">{{ st.address.split(',')[0] }}</span>{% endfor %}</td></tr>
+          {% endif %}
+          <tr><td class="text-muted">Destination</td>
+              <td><span class="small">{{ s.destination_address }}</span></td></tr>
+          <tr><td class="text-muted" colspan="2" style="padding-top:10px;"><strong>Cargo</strong></td></tr>
+          <tr><td class="text-muted">Weight</td><td>{{ s.weight_kg }} kg</td></tr>
+          <tr><td class="text-muted">Volume</td><td>{{ s.volume_m3 }} m³</td></tr>
+          <tr><td class="text-muted">Distance</td><td>{{ "%.1f"|format(s.distance_km or 0) }} km</td></tr>
+          <tr><td class="text-muted">Freight Cost</td><td class="fw-700 text-primary">${{ "%.2f"|format(s.freight_cost or 0) }}</td></tr>
+          <tr><td class="text-muted">Est. Delivery</td>
+              <td>{{ s.estimated_delivery.strftime('%b %d, %Y') if s.estimated_delivery else '—' }}</td></tr>
+          {% if s.actual_delivery %}
+          <tr><td class="text-muted">Actual Delivery</td>
+              <td class="text-success">{{ s.actual_delivery.strftime('%b %d, %Y %H:%M') }}</td></tr>
+          {% endif %}
+        </table>
+      </div>
+    </div>
+
+    <!-- Vehicle info -->
+    {% if s.dispatch %}
+    <div class="card mb-4">
+      <div class="card-header"><h6><i class="fa-solid fa-truck me-2 text-primary"></i>Assigned Vehicle</h6></div>
+      <div class="card-body">
+        <table class="table table-sm mb-0" style="font-size:.875rem;">
+          <tr><td class="text-muted">Plate</td><td class="fw-600 font-monospace">{{ s.dispatch.vehicle.plate }}</td></tr>
+          <tr><td class="text-muted">Type</td><td>{{ s.dispatch.vehicle.type_display() }}</td></tr>
+          <tr><td class="text-muted">Driver</td><td class="fw-500">{{ s.dispatch.vehicle.driver_name }}</td></tr>
+          <tr><td class="text-muted">Phone</td><td>{{ s.dispatch.vehicle.driver_phone }}</td></tr>
+          <tr><td class="text-muted">Dispatched</td><td class="small">{{ s.dispatch.assigned_at.strftime('%b %d, %H:%M') }}</td></tr>
+          {% if s.dispatch.driver_notes %}
+          <tr><td class="text-muted">Notes</td><td class="small">{{ s.dispatch.driver_notes }}</td></tr>
+          {% endif %}
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Status update -->
+    {% if s.status not in ('delivered', 'cancelled') %}
+    <div class="card mb-4">
+      <div class="card-header"><h6><i class="fa-solid fa-pen me-2"></i>Update Status</h6></div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('update_status', sid=s.id) }}">
+          <div class="mb-2">
+            <select class="form-select form-select-sm" name="status">
+              {% for st in ['pending','dispatched','in_transit','delivered','cancelled'] %}
+              {% if st != s.status %}
+              <option value="{{ st }}">→ {{ st.replace('_',' ') | title }}</option>
+              {% endif %}
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-2">
+            <input type="text" class="form-control form-control-sm" name="note"
+                   placeholder="Optional note for tracking...">
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm w-100">
+            <i class="fa-solid fa-floppy-disk me-1"></i>Save Status
+          </button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if not s.dispatch and s.status == 'pending' %}
+    <div class="card">
+      <div class="card-body text-center">
+        <i class="fa-solid fa-truck-ramp-box fa-2x text-muted mb-2"></i>
+        <p class="small text-muted mb-2">No vehicle assigned yet.</p>
+        <a href="{{ url_for('dispatch') }}" class="btn btn-primary btn-sm">
+          <i class="fa-solid fa-truck me-1"></i>Go to Dispatch
+        </a>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Right column: Map + Timeline -->
+  <div class="col-lg-8">
+    <!-- Route map -->
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5><i class="fa-solid fa-map me-2 text-primary"></i>Route Map</h5>
+        <span class="small text-muted">{{ "%.1f"|format(s.distance_km or 0) }} km
+          {% if s.stops %}| {{ s.stops|length }} intermediate stop(s){% endif %}
+        </span>
+      </div>
+      <div id="shipMap" style="height:320px;"></div>
+    </div>
+
+    <!-- Tracking timeline -->
+    <div class="card">
+      <div class="card-header">
+        <h5><i class="fa-solid fa-timeline me-2 text-primary"></i>Tracking Timeline</h5>
+        <span class="badge bg-secondary-subtle text-secondary">{{ s.tracking_events|length }} events</span>
+      </div>
+      <div class="card-body">
+        {% if s.tracking_events %}
+        <div class="timeline">
+          {% for evt in s.tracking_events | reverse %}
+          <div class="timeline-item">
+            <div class="timeline-dot {{ evt.color() }}">
+              <i class="fa-solid {{ evt.icon() }}"></i>
+            </div>
+            <div class="timeline-content">
+              <div class="event-title">{{ evt.event_type.replace('_',' ') | title }}</div>
+              <div class="event-meta">
+                <i class="fa-regular fa-clock me-1"></i>{{ evt.created_at.strftime('%b %d, %Y %H:%M') }}
+                {% if evt.location_address %}
+                <span class="ms-2"><i class="fa-solid fa-location-dot me-1"></i>{{ evt.location_address }}</span>
+                {% endif %}
+              </div>
+              {% if evt.description %}
+              <div class="mt-1 small text-muted">{{ evt.description }}</div>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-4">No tracking events yet.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const routeStops = {{ route | safe }};
+
+const map = L.map('shipMap');
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap contributors', maxZoom: 18
+}).addTo(map);
+
+const colors = { origin: '#22c55e', destination: '#ef4444', waypoint: '#3b82f6',
+                 pickup: '#f59e0b', delivery: '#8b5cf6' };
+const latlngs = [];
+
+routeStops.forEach((stop, i) => {
+  const color = colors[stop.type] || '#64748b';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="36" viewBox="0 0 28 36">
+    <path fill="${color}" stroke="#fff" stroke-width="2"
+      d="M14 0C6.3 0 0 6.3 0 14c0 9.3 14 22 14 22S28 23.3 28 14C28 6.3 21.7 0 14 0z"/>
+    <circle cx="14" cy="14" r="5" fill="#fff" opacity=".9"/>
+    <text x="14" y="18" text-anchor="middle" fill="${color}" font-size="8" font-weight="bold">${i+1}</text>
+  </svg>`;
+  const icon = L.icon({
+    iconUrl: 'data:image/svg+xml;base64,' + btoa(svg),
+    iconSize: [28,36], iconAnchor: [14,36], popupAnchor: [0,-36]
+  });
+  const label = stop.type.charAt(0).toUpperCase() + stop.type.slice(1);
+  L.marker([stop.lat, stop.lng], { icon }).addTo(map)
+    .bindPopup(`<b>${label}:</b> ${stop.address}`);
+  latlngs.push([stop.lat, stop.lng]);
+});
+
+if (latlngs.length > 1) {
+  const line = L.polyline(latlngs, { color: '#0891b2', weight: 3, dashArray: '8 5' }).addTo(map);
+  map.fitBounds(line.getBounds(), { padding: [30, 30] });
+} else if (latlngs.length === 1) {
+  map.setView(latlngs[0], 10);
+}
+</script>
+{% endblock %}
