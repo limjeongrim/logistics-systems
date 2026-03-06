@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Work Orders{% endblock %}
+{% block page_title %}Work Orders{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex align-items-start justify-content-between">
+  <div>
+    <h1>Work Orders</h1>
+    <p>Manage outbound pick orders and track fulfillment progress</p>
+  </div>
+  <a href="{{ url_for('new_workorder') }}" class="btn btn-primary">
+    <i class="fa-solid fa-plus me-2"></i>New Work Order
+  </a>
+</div>
+
+<!-- Status filter tabs -->
+<div class="card mb-4">
+  <div class="card-body py-2 px-3">
+    <div class="d-flex gap-2 flex-wrap">
+      <a href="{{ url_for('workorders') }}"
+         class="btn btn-sm {% if not status_filter %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+        All Orders
+      </a>
+      <a href="{{ url_for('workorders', status='pending') }}"
+         class="btn btn-sm {% if status_filter == 'pending' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">
+        <i class="fa-solid fa-clock me-1"></i>Pending
+      </a>
+      <a href="{{ url_for('workorders', status='in_progress') }}"
+         class="btn btn-sm {% if status_filter == 'in_progress' %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+        <i class="fa-solid fa-spinner me-1"></i>In Progress
+      </a>
+      <a href="{{ url_for('workorders', status='completed') }}"
+         class="btn btn-sm {% if status_filter == 'completed' %}btn-success{% else %}btn-outline-secondary{% endif %}">
+        <i class="fa-solid fa-circle-check me-1"></i>Completed
+      </a>
+      <a href="{{ url_for('workorders', status='cancelled') }}"
+         class="btn btn-sm {% if status_filter == 'cancelled' %}btn-danger{% else %}btn-outline-secondary{% endif %}">
+        <i class="fa-solid fa-ban me-1"></i>Cancelled
+      </a>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h5><i class="fa-solid fa-clipboard-list me-2 text-primary"></i>
+      Work Orders
+      <span class="badge bg-secondary ms-2">{{ orders|length }}</span>
+    </h5>
+  </div>
+  <div class="card-body p-0">
+    {% if orders %}
+    <div class="table-responsive">
+      <table class="table mb-0">
+        <thead>
+          <tr>
+            <th>Order #</th>
+            <th>Customer</th>
+            <th>Priority</th>
+            <th>Status</th>
+            <th>Items</th>
+            <th>Progress</th>
+            <th>Created</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for wo in orders %}
+          <tr>
+            <td>
+              <a href="{{ url_for('workorder_detail', order_id=wo.id) }}"
+                 class="fw-600 text-decoration-none text-primary font-monospace">
+                {{ wo.order_number }}
+              </a>
+            </td>
+            <td class="fw-500">{{ wo.customer or '—' }}</td>
+            <td>
+              <span class="badge bg-{{ wo.priority | priority_badge }}-subtle text-{{ wo.priority | priority_badge }}">
+                {% if wo.priority == 'urgent' %}<i class="fa-solid fa-fire me-1"></i>{% endif %}
+                {{ wo.priority | title }}
+              </span>
+            </td>
+            <td>
+              <span class="badge bg-{{ wo.status | status_badge }}-subtle text-{{ wo.status | status_badge }}">
+                {{ wo.status.replace('_', ' ') | title }}
+              </span>
+            </td>
+            <td class="text-muted">{{ wo.items|length }} items</td>
+            <td style="min-width:140px;">
+              {% set pct = wo.completion_rate() %}
+              <div class="d-flex align-items-center gap-2">
+                <div class="progress flex-grow-1" style="height:6px;">
+                  <div class="progress-bar {% if pct == 100 %}bg-success{% elif pct > 0 %}bg-primary{% else %}bg-secondary{% endif %}"
+                       style="width:{{ pct }}%"></div>
+                </div>
+                <span class="small text-muted">{{ pct }}%</span>
+              </div>
+            </td>
+            <td class="text-muted small">{{ wo.created_at.strftime('%b %d, %Y') }}</td>
+            <td>
+              <a href="{{ url_for('workorder_detail', order_id=wo.id) }}"
+                 class="btn btn-sm btn-outline-primary">
+                <i class="fa-solid fa-eye me-1"></i>View
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center py-5 text-muted">
+      <i class="fa-solid fa-clipboard-list fa-3x mb-3 d-block opacity-25"></i>
+      <h5>No work orders found</h5>
+      <p class="mb-3">Create your first work order to get started.</p>
+      <a href="{{ url_for('new_workorder') }}" class="btn btn-primary">
+        <i class="fa-solid fa-plus me-2"></i>New Work Order
+      </a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

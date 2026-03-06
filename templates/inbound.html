@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block title %}Inbound{% endblock %}
+{% block page_title %}Inbound Recording{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Inbound Recording</h1>
+  <p>Record goods received from suppliers into the warehouse</p>
+</div>
+
+<div class="row g-4">
+  <!-- Form -->
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-header">
+        <h5><i class="fa-solid fa-arrow-down-to-bracket me-2 text-success"></i>New Inbound Entry</h5>
+      </div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('inbound') }}">
+          <div class="mb-3">
+            <label class="form-label">Product <span class="text-danger">*</span></label>
+            <select class="form-select" name="product_id" id="productSelect" required>
+              <option value="">— Select product —</option>
+              {% for p in products %}
+              <option value="{{ p.id }}"
+                data-stock="{{ p.current_stock() }}"
+                data-unit="{{ p.unit }}"
+                data-location="{{ p.location }}"
+                data-sku="{{ p.sku }}">
+                [{{ p.sku }}] {{ p.name }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Product info card (hidden until selection) -->
+          <div id="productInfo" class="d-none mb-3 p-3 rounded-3" style="background:#f8fafc;border:1px solid #e2e8f0;">
+            <div class="row g-2 text-center">
+              <div class="col-4">
+                <div class="small text-muted">SKU</div>
+                <div class="fw-600 small" id="infoSku">—</div>
+              </div>
+              <div class="col-4">
+                <div class="small text-muted">Location</div>
+                <div class="fw-600 small" id="infoLocation">—</div>
+              </div>
+              <div class="col-4">
+                <div class="small text-muted">Current Stock</div>
+                <div class="fw-600 small" id="infoStock">—</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Quantity <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <input type="number" class="form-control" name="quantity" min="1" placeholder="0" required>
+              <span class="input-group-text" id="unitLabel">units</span>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Purchase Order / Reference</label>
+            <input type="text" class="form-control" name="reference" placeholder="e.g. PO-2024-001">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Supplier</label>
+            <input type="text" class="form-control" name="supplier" placeholder="Supplier name">
+          </div>
+          <div class="mb-4">
+            <label class="form-label">Notes</label>
+            <textarea class="form-control" name="notes" rows="2" placeholder="Optional notes..."></textarea>
+          </div>
+          <button type="submit" class="btn btn-success w-100">
+            <i class="fa-solid fa-check me-2"></i>Record Inbound
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- History -->
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header">
+        <h5><i class="fa-solid fa-clock-rotate-left me-2 text-primary"></i>Recent Inbound (Last 20)</h5>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table mb-0">
+            <thead>
+              <tr>
+                <th>Date & Time</th>
+                <th>Product</th>
+                <th>Location</th>
+                <th>Qty</th>
+                <th>Supplier</th>
+                <th>Reference</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for t in history %}
+              <tr>
+                <td class="text-muted small">{{ t.created_at.strftime('%b %d, %Y %H:%M') }}</td>
+                <td>
+                  <div class="fw-500">{{ t.product.name }}</div>
+                  <div class="text-muted small">{{ t.product.sku }}</div>
+                </td>
+                <td><span class="location-badge">{{ t.product.location }}</span></td>
+                <td>
+                  <span class="text-success fw-600">+{{ t.quantity }}</span>
+                  <span class="text-muted small">{{ t.product.unit }}</span>
+                </td>
+                <td class="text-muted small">{{ t.supplier or '—' }}</td>
+                <td class="text-muted small">{{ t.reference or '—' }}</td>
+              </tr>
+              {% else %}
+              <tr><td colspan="6" class="text-center text-muted py-4">No inbound records yet.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('productSelect').addEventListener('change', function() {
+  const opt = this.options[this.selectedIndex];
+  const info = document.getElementById('productInfo');
+  if (this.value) {
+    document.getElementById('infoSku').textContent      = opt.dataset.sku;
+    document.getElementById('infoLocation').textContent = opt.dataset.location;
+    document.getElementById('infoStock').textContent    = opt.dataset.stock + ' ' + opt.dataset.unit;
+    document.getElementById('unitLabel').textContent    = opt.dataset.unit;
+    info.classList.remove('d-none');
+  } else {
+    info.classList.add('d-none');
+    document.getElementById('unitLabel').textContent = 'units';
+  }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}WMS{% endblock %} — Warehouse Management System</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
+  <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet"/>
+</head>
+<body>
+
+<!-- Sidebar -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-brand">
+    <i class="fa-solid fa-warehouse"></i>
+    <span class="brand-text">LogiWMS</span>
+  </div>
+  <ul class="sidebar-nav">
+    <li class="nav-label">Overview</li>
+    <li>
+      <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
+        <i class="fa-solid fa-gauge-high"></i><span>Dashboard</span>
+      </a>
+    </li>
+    <li>
+      <a href="{{ url_for('inventory') }}" class="nav-link {% if request.endpoint == 'inventory' %}active{% endif %}">
+        <i class="fa-solid fa-boxes-stacked"></i><span>Inventory</span>
+      </a>
+    </li>
+    <li>
+      <a href="{{ url_for('alerts') }}" class="nav-link {% if request.endpoint == 'alerts' %}active{% endif %}">
+        <i class="fa-solid fa-triangle-exclamation"></i><span>Alerts</span>
+        {% set low = namespace(count=0) %}
+        {% for p in [] %}{% endfor %}
+      </a>
+    </li>
+
+    <li class="nav-label">Operations</li>
+    <li>
+      <a href="{{ url_for('inbound') }}" class="nav-link {% if request.endpoint == 'inbound' %}active{% endif %}">
+        <i class="fa-solid fa-arrow-down-to-bracket"></i><span>Inbound</span>
+      </a>
+    </li>
+    <li>
+      <a href="{{ url_for('outbound') }}" class="nav-link {% if request.endpoint == 'outbound' %}active{% endif %}">
+        <i class="fa-solid fa-arrow-up-from-bracket"></i><span>Outbound</span>
+      </a>
+    </li>
+    <li>
+      <a href="{{ url_for('workorders') }}" class="nav-link {% if request.endpoint in ['workorders','workorder_detail','new_workorder'] %}active{% endif %}">
+        <i class="fa-solid fa-clipboard-list"></i><span>Work Orders</span>
+      </a>
+    </li>
+
+    <li class="nav-label">Analytics</li>
+    <li>
+      <a href="{{ url_for('forecast') }}" class="nav-link {% if request.endpoint == 'forecast' %}active{% endif %}">
+        <i class="fa-solid fa-chart-line"></i><span>Demand Forecast</span>
+      </a>
+    </li>
+  </ul>
+  <div class="sidebar-footer">
+    <small class="text-muted">v1.0 &mdash; LogiWMS</small>
+  </div>
+</nav>
+
+<!-- Main content -->
+<div class="main-wrapper">
+  <header class="topbar">
+    <button class="btn btn-link sidebar-toggle" id="sidebarToggle">
+      <i class="fa-solid fa-bars"></i>
+    </button>
+    <div class="topbar-title">{% block page_title %}{% endblock %}</div>
+    <div class="topbar-right">
+      <span class="text-muted small">
+        <i class="fa-regular fa-clock me-1"></i>
+        <span id="clock"></span>
+      </span>
+    </div>
+  </header>
+
+  <div class="content-area">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} alert-dismissible fade show mb-4" role="alert">
+            <i class="fa-solid fa-{% if category == 'success' %}circle-check{% elif category == 'danger' %}circle-xmark{% else %}circle-info{% endif %} me-2"></i>
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+  // Clock
+  function updateClock() {
+    const now = new Date();
+    document.getElementById('clock').textContent = now.toLocaleString('en-US', {
+      month: 'short', day: 'numeric', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+  }
+  updateClock();
+  setInterval(updateClock, 60000);
+
+  // Sidebar toggle
+  document.getElementById('sidebarToggle').addEventListener('click', function () {
+    document.getElementById('sidebar').classList.toggle('collapsed');
+    document.querySelector('.main-wrapper').classList.toggle('expanded');
+  });
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Dashboard</h1>
+  <p>Real-time overview of your warehouse operations</p>
+</div>
+
+<!-- KPI Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-xl-3">
+    <div class="kpi-card">
+      <div class="kpi-icon blue"><i class="fa-solid fa-boxes-stacked"></i></div>
+      <div>
+        <div class="kpi-value">{{ total_products }}</div>
+        <div class="kpi-label">Total Products</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="kpi-card">
+      <div class="kpi-icon green"><i class="fa-solid fa-layer-group"></i></div>
+      <div>
+        <div class="kpi-value">{{ "{:,}".format(total_stock) }}</div>
+        <div class="kpi-label">Total Stock Units</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <a href="{{ url_for('alerts') }}" class="text-decoration-none">
+      <div class="kpi-card">
+        <div class="kpi-icon {% if low_stock_count > 0 %}red{% else %}green{% endif %}">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+        <div>
+          <div class="kpi-value">{{ low_stock_count }}</div>
+          <div class="kpi-label">Low Stock Alerts</div>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <a href="{{ url_for('workorders') }}" class="text-decoration-none">
+      <div class="kpi-card">
+        <div class="kpi-icon amber"><i class="fa-solid fa-clipboard-list"></i></div>
+        <div>
+          <div class="kpi-value">{{ pending_orders }}</div>
+          <div class="kpi-label">Active Work Orders</div>
+        </div>
+      </div>
+    </a>
+  </div>
+</div>
+
+<!-- Charts row -->
+<div class="row g-4 mb-4">
+  <div class="col-lg-8">
+    <div class="card h-100">
+      <div class="card-header">
+        <h5><i class="fa-solid fa-chart-area me-2 text-primary"></i>Transaction Trend (Last 30 Days)</h5>
+      </div>
+      <div class="card-body">
+        <div class="chart-container" style="height:260px;">
+          <canvas id="trendChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header">
+        <h5><i class="fa-solid fa-chart-pie me-2 text-primary"></i>Stock by Category</h5>
+      </div>
+      <div class="card-body d-flex align-items-center justify-content-center">
+        <div class="chart-container" style="height:260px; width:100%;">
+          <canvas id="catChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Recent transactions -->
+<div class="row g-4">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header">
+        <h5><i class="fa-solid fa-clock-rotate-left me-2 text-primary"></i>Recent Transactions</h5>
+        <div class="d-flex gap-2">
+          <a href="{{ url_for('inbound') }}" class="btn btn-sm btn-outline-primary">
+            <i class="fa-solid fa-plus me-1"></i>Inbound
+          </a>
+          <a href="{{ url_for('outbound') }}" class="btn btn-sm btn-outline-secondary">
+            <i class="fa-solid fa-minus me-1"></i>Outbound
+          </a>
+        </div>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table mb-0">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Product</th>
+                <th>Location</th>
+                <th>Qty</th>
+                <th>Reference</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for t in recent_txns %}
+              <tr>
+                <td class="text-muted small">{{ t.created_at.strftime('%b %d, %H:%M') }}</td>
+                <td>
+                  {% if t.type == 'inbound' %}
+                    <span class="badge bg-success-subtle text-success"><i class="fa-solid fa-arrow-down me-1"></i>Inbound</span>
+                  {% else %}
+                    <span class="badge bg-danger-subtle text-danger"><i class="fa-solid fa-arrow-up me-1"></i>Outbound</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <div class="fw-500">{{ t.product.name }}</div>
+                  <div class="text-muted small">{{ t.product.sku }}</div>
+                </td>
+                <td><span class="location-badge">{{ t.product.location }}</span></td>
+                <td><strong>{{ t.quantity }}</strong> {{ t.product.unit }}</td>
+                <td class="text-muted small">{{ t.reference or '—' }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header">
+        <h5><i class="fa-solid fa-bolt me-2 text-warning"></i>Quick Actions</h5>
+      </div>
+      <div class="card-body d-grid gap-2">
+        <a href="{{ url_for('inbound') }}" class="btn btn-primary">
+          <i class="fa-solid fa-arrow-down-to-bracket me-2"></i>Record Inbound
+        </a>
+        <a href="{{ url_for('outbound') }}" class="btn btn-outline-secondary">
+          <i class="fa-solid fa-arrow-up-from-bracket me-2"></i>Record Outbound
+        </a>
+        <a href="{{ url_for('new_workorder') }}" class="btn btn-outline-secondary">
+          <i class="fa-solid fa-plus me-2"></i>New Work Order
+        </a>
+        <a href="{{ url_for('alerts') }}" class="btn btn-outline-danger">
+          <i class="fa-solid fa-triangle-exclamation me-2"></i>View Alerts
+          {% if low_stock_count > 0 %}
+            <span class="badge bg-danger ms-1">{{ low_stock_count }}</span>
+          {% endif %}
+        </a>
+        <a href="{{ url_for('forecast') }}" class="btn btn-outline-info">
+          <i class="fa-solid fa-chart-line me-2"></i>Demand Forecast
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const trendData = {{ trend_json | safe }};
+const catData   = {{ categories_json | safe }};
+
+// Trend chart
+const trendCtx = document.getElementById('trendChart').getContext('2d');
+new Chart(trendCtx, {
+  type: 'line',
+  data: {
+    labels: trendData.map(d => d.date),
+    datasets: [
+      {
+        label: 'Inbound',
+        data: trendData.map(d => d.inbound),
+        borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,.08)',
+        tension: 0.4, fill: true, pointRadius: 0, borderWidth: 2,
+      },
+      {
+        label: 'Outbound',
+        data: trendData.map(d => d.outbound),
+        borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,.08)',
+        tension: 0.4, fill: true, pointRadius: 0, borderWidth: 2,
+      }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'top', labels: { font: { size: 12 } } } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 11 }, maxTicksLimit: 10 } },
+      y: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 11 } }, beginAtZero: true }
+    }
+  }
+});
+
+// Category donut chart
+const catCtx = document.getElementById('catChart').getContext('2d');
+const catColors = ['#3b82f6','#22c55e','#f59e0b','#ef4444','#8b5cf6','#06b6d4'];
+new Chart(catCtx, {
+  type: 'doughnut',
+  data: {
+    labels: Object.keys(catData),
+    datasets: [{
+      data: Object.values(catData),
+      backgroundColor: catColors,
+      borderWidth: 2, borderColor: '#fff',
+      hoverOffset: 6
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    cutout: '65%',
+    plugins: {
+      legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 12 } }
+    }
+  }
+});
+</script>
+{% endblock %}

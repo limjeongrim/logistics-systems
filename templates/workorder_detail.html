@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+{% block title %}{{ wo.order_number }}{% endblock %}
+{% block page_title %}Work Order — {{ wo.order_number }}{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex align-items-start justify-content-between">
+  <div>
+    <h1>{{ wo.order_number }}</h1>
+    <p>
+      <span class="badge bg-{{ wo.status | status_badge }}-subtle text-{{ wo.status | status_badge }} me-2">
+        {{ wo.status.replace('_', ' ') | title }}
+      </span>
+      <span class="badge bg-{{ wo.priority | priority_badge }}-subtle text-{{ wo.priority | priority_badge }} me-2">
+        {{ wo.priority | title }} Priority
+      </span>
+      Created {{ wo.created_at.strftime('%B %d, %Y') }}
+    </p>
+  </div>
+  <a href="{{ url_for('workorders') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="fa-solid fa-arrow-left me-1"></i>Back to List
+  </a>
+</div>
+
+<div class="row g-4">
+  <!-- Left: Pick list -->
+  <div class="col-lg-8">
+
+    <!-- Progress summary -->
+    {% set pct = wo.completion_rate() %}
+    <div class="card mb-4">
+      <div class="card-body">
+        <div class="d-flex justify-content-between mb-2">
+          <span class="fw-600">Pick Progress</span>
+          <span class="fw-600 {% if pct == 100 %}text-success{% else %}text-primary{% endif %}">{{ pct }}%</span>
+        </div>
+        <div class="progress" style="height:10px;">
+          <div class="progress-bar {% if pct == 100 %}bg-success{% else %}bg-primary{% endif %} rounded-pill"
+               style="width:{{ pct }}%; transition:width .5s ease;"></div>
+        </div>
+        <div class="d-flex gap-4 mt-2 small text-muted">
+          <span><i class="fa-solid fa-circle-check text-success me-1"></i>{{ wo.items | selectattr('quantity_picked', 'ge', 1) | list | length }} picked</span>
+          <span><i class="fa-solid fa-clock text-warning me-1"></i>{{ wo.items | selectattr('quantity_picked', 'eq', 0) | list | length }} pending</span>
+          <span><i class="fa-solid fa-list-check me-1"></i>{{ wo.items|length }} total items</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pick sheet (sorted by location) -->
+    <div class="card">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <h5 class="mb-0">
+          <i class="fa-solid fa-route me-2 text-primary"></i>
+          Pick Sheet
+          <span class="badge bg-info-subtle text-info ms-2 small">Sorted by Location</span>
+        </h5>
+        {% if wo.status != 'cancelled' and wo.status != 'completed' %}
+        <button onclick="window.print()" class="btn btn-sm btn-outline-secondary">
+          <i class="fa-solid fa-print me-1"></i>Print
+        </button>
+        {% endif %}
+      </div>
+
+      <div class="card-body">
+        {% if wo.status == 'in_progress' or wo.status == 'pending' %}
+        <form method="POST" action="{{ url_for('update_workorder', order_id=wo.id) }}">
+          <input type="hidden" name="action" value="update_pick">
+        {% endif %}
+
+        {% for item in sorted_items %}
+        {% set pick_status = item.pick_status() %}
+        <div class="pick-item {{ pick_status }}">
+          <!-- Step number -->
+          <div class="pick-step {% if pick_status == 'complete' %}done{% endif %}">
+            {% if pick_status == 'complete' %}
+              <i class="fa-solid fa-check"></i>
+            {% else %}
+              {{ loop.index }}
+            {% endif %}
+          </div>
+
+          <!-- Location -->
+          <div class="text-center" style="min-width:70px;">
+            <div class="location-badge" style="font-size:.85rem; padding:4px 10px;">
+              {{ item.product.location }}
+            </div>
+            <div class="text-muted" style="font-size:.68rem; margin-top:3px;">Location</div>
+          </div>
+
+          <!-- Product info -->
+          <div class="flex-grow-1">
+            <div class="fw-600">{{ item.product.name }}</div>
+            <div class="text-muted small">
+              <span class="font-monospace">{{ item.product.sku }}</span>
+              &mdash; {{ item.product.category }}
+            </div>
+            {% if item.product.description %}
+            <div class="text-muted" style="font-size:.75rem;">{{ item.product.description }}</div>
+            {% endif %}
+          </div>
+
+          <!-- Qty required -->
+          <div class="text-center" style="min-width:90px;">
+            <div class="fw-700 fs-5">{{ item.quantity_required }}</div>
+            <div class="text-muted small">{{ item.product.unit }} req.</div>
+          </div>
+
+          <!-- Pick qty input or display -->
+          <div class="text-center" style="min-width:110px;">
+            {% if wo.status in ('in_progress', 'pending') %}
+            <input type="number" name="picked_{{ item.id }}"
+                   class="form-control form-control-sm text-center"
+                   value="{{ item.quantity_picked }}"
+                   min="0" max="{{ item.quantity_required }}"
+                   style="width:80px; margin:0 auto;">
+            <div class="text-muted" style="font-size:.7rem; margin-top:2px;">Picked</div>
+            {% else %}
+              <div class="fw-700 fs-5 {% if pick_status == 'complete' %}text-success{% else %}text-muted{% endif %}">
+                {{ item.quantity_picked }}
+              </div>
+              <div class="text-muted small">Picked</div>
+            {% endif %}
+          </div>
+
+          <!-- Status badge -->
+          <div style="min-width:80px; text-align:right;">
+            {% if pick_status == 'complete' %}
+              <span class="badge bg-success-subtle text-success">
+                <i class="fa-solid fa-check me-1"></i>Done
+              </span>
+            {% elif pick_status == 'partial' %}
+              <span class="badge bg-warning-subtle text-warning">
+                <i class="fa-solid fa-hourglass-half me-1"></i>Partial
+              </span>
+            {% else %}
+              <span class="badge bg-secondary-subtle text-secondary">
+                <i class="fa-regular fa-clock me-1"></i>Pending
+              </span>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+
+        {% if wo.status in ('in_progress', 'pending') %}
+          <div class="d-flex gap-2 mt-3">
+            <button type="submit" class="btn btn-primary">
+              <i class="fa-solid fa-floppy-disk me-2"></i>Save Pick Progress
+            </button>
+          </div>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Order info & actions -->
+  <div class="col-lg-4">
+    <!-- Order info -->
+    <div class="card mb-4">
+      <div class="card-header"><h6><i class="fa-solid fa-circle-info me-2"></i>Order Info</h6></div>
+      <div class="card-body">
+        <table class="table table-sm mb-0" style="font-size:.875rem;">
+          <tr><td class="text-muted">Order #</td><td class="fw-600 font-monospace">{{ wo.order_number }}</td></tr>
+          <tr><td class="text-muted">Customer</td><td class="fw-500">{{ wo.customer or '—' }}</td></tr>
+          <tr><td class="text-muted">Status</td>
+              <td><span class="badge bg-{{ wo.status | status_badge }}-subtle text-{{ wo.status | status_badge }}">{{ wo.status.replace('_',' ')|title }}</span></td></tr>
+          <tr><td class="text-muted">Priority</td>
+              <td><span class="badge bg-{{ wo.priority | priority_badge }}-subtle text-{{ wo.priority | priority_badge }}">{{ wo.priority|title }}</span></td></tr>
+          <tr><td class="text-muted">Created</td><td>{{ wo.created_at.strftime('%b %d, %Y %H:%M') }}</td></tr>
+          <tr><td class="text-muted">Updated</td><td>{{ wo.updated_at.strftime('%b %d, %Y %H:%M') }}</td></tr>
+          {% if wo.notes %}
+          <tr><td class="text-muted">Notes</td><td class="small">{{ wo.notes }}</td></tr>
+          {% endif %}
+        </table>
+      </div>
+    </div>
+
+    <!-- Status change -->
+    {% if wo.status != 'completed' and wo.status != 'cancelled' %}
+    <div class="card mb-4">
+      <div class="card-header"><h6><i class="fa-solid fa-arrow-right-arrow-left me-2"></i>Update Status</h6></div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('update_workorder', order_id=wo.id) }}" class="d-grid gap-2">
+          <input type="hidden" name="action" value="update_status">
+          {% if wo.status == 'pending' %}
+          <button type="submit" name="status" value="in_progress" class="btn btn-primary">
+            <i class="fa-solid fa-play me-2"></i>Start Picking
+          </button>
+          {% endif %}
+          {% if wo.status == 'in_progress' %}
+          <button type="submit" name="status" value="completed" class="btn btn-success">
+            <i class="fa-solid fa-circle-check me-2"></i>Mark Completed
+          </button>
+          <button type="submit" name="status" value="pending" class="btn btn-outline-secondary btn-sm">
+            <i class="fa-solid fa-rotate-left me-1"></i>Back to Pending
+          </button>
+          {% endif %}
+          <button type="submit" name="status" value="cancelled"
+                  class="btn btn-outline-danger btn-sm"
+                  onclick="return confirm('Cancel this work order?')">
+            <i class="fa-solid fa-ban me-1"></i>Cancel Order
+          </button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Warehouse map hint -->
+    <div class="card">
+      <div class="card-header"><h6><i class="fa-solid fa-map-location-dot me-2 text-info"></i>Location Guide</h6></div>
+      <div class="card-body">
+        <div class="small text-muted mb-2">Locations for this order (pick in order):</div>
+        {% set seen = namespace(locs=[]) %}
+        {% for item in sorted_items %}
+          {% if item.product.location not in seen.locs %}
+            {% set _ = seen.locs.append(item.product.location) %}
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <span class="location-badge">{{ item.product.location }}</span>
+              <span class="small text-muted">
+                {% for i2 in sorted_items if i2.product.location == item.product.location %}
+                  {{ i2.product.name }}{% if not loop.last %}, {% endif %}
+                {% endfor %}
+              </span>
+            </div>
+          {% endif %}
+        {% endfor %}
+        <div class="small text-muted mt-2" style="font-size:.72rem;">
+          <i class="fa-solid fa-circle-info me-1"></i>
+          Format: [Aisle][Row]-[Shelf]<br>
+          Items sorted A→Z for efficient path.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

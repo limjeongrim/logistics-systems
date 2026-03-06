@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% block title %}Alerts{% endblock %}
+{% block page_title %}Low Stock Alerts{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Low Stock Alerts</h1>
+  <p>Products that require immediate attention or restocking</p>
+</div>
+
+<!-- Summary KPIs -->
+<div class="row g-3 mb-4">
+  <div class="col-sm-4">
+    <div class="kpi-card">
+      <div class="kpi-icon red"><i class="fa-solid fa-box-open"></i></div>
+      <div>
+        <div class="kpi-value">{{ out_of_stock|length }}</div>
+        <div class="kpi-label">Out of Stock</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="kpi-card">
+      <div class="kpi-icon amber"><i class="fa-solid fa-arrow-down"></i></div>
+      <div>
+        <div class="kpi-value">{{ low_stock|length }}</div>
+        <div class="kpi-label">Below Reorder Point</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-4">
+    <div class="kpi-card">
+      <div class="kpi-icon cyan"><i class="fa-solid fa-circle-exclamation"></i></div>
+      <div>
+        <div class="kpi-value">{{ warning|length }}</div>
+        <div class="kpi-label">Low Warning Level</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if not out_of_stock and not low_stock and not warning %}
+<div class="card">
+  <div class="card-body text-center py-5">
+    <i class="fa-solid fa-circle-check fa-3x text-success mb-3"></i>
+    <h4 class="text-success">All stock levels are healthy!</h4>
+    <p class="text-muted">No alerts at this time. All products are above their reorder points.</p>
+  </div>
+</div>
+{% endif %}
+
+<!-- Out of Stock -->
+{% if out_of_stock %}
+<div class="card mb-4 border-danger-subtle">
+  <div class="card-header" style="background:rgba(239,68,68,.06); border-bottom:1px solid rgba(239,68,68,.2);">
+    <h5 class="text-danger mb-0">
+      <i class="fa-solid fa-circle-xmark me-2"></i>Out of Stock
+      <span class="badge bg-danger ms-2">{{ out_of_stock|length }}</span>
+    </h5>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table mb-0">
+        <thead>
+          <tr><th>SKU</th><th>Product</th><th>Category</th><th>Location</th><th>Stock</th><th>Reorder Point</th><th>Action</th></tr>
+        </thead>
+        <tbody>
+          {% for p in out_of_stock %}
+          <tr>
+            <td class="font-monospace text-muted small">{{ p.sku }}</td>
+            <td class="fw-500">{{ p.name }}</td>
+            <td><span class="badge bg-light text-dark border">{{ p.category }}</span></td>
+            <td><span class="location-badge">{{ p.location }}</span></td>
+            <td><span class="badge badge-stock-out">0 {{ p.unit }}</span></td>
+            <td class="text-muted">{{ p.reorder_point }} {{ p.unit }}</td>
+            <td>
+              <a href="{{ url_for('inbound') }}" class="btn btn-danger btn-sm">
+                <i class="fa-solid fa-plus me-1"></i>Restock Now
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Low Stock (below reorder point) -->
+{% if low_stock %}
+<div class="card mb-4" style="border-color:rgba(245,158,11,.3);">
+  <div class="card-header" style="background:rgba(245,158,11,.06); border-bottom:1px solid rgba(245,158,11,.2);">
+    <h5 class="text-warning mb-0">
+      <i class="fa-solid fa-triangle-exclamation me-2"></i>Below Reorder Point
+      <span class="badge bg-warning text-dark ms-2">{{ low_stock|length }}</span>
+    </h5>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table mb-0">
+        <thead>
+          <tr><th>SKU</th><th>Product</th><th>Category</th><th>Location</th><th>Current</th><th>Reorder Point</th><th>Deficit</th><th>Action</th></tr>
+        </thead>
+        <tbody>
+          {% for p in low_stock %}
+          {% set stock = p.current_stock() %}
+          <tr>
+            <td class="font-monospace text-muted small">{{ p.sku }}</td>
+            <td class="fw-500">{{ p.name }}</td>
+            <td><span class="badge bg-light text-dark border">{{ p.category }}</span></td>
+            <td><span class="location-badge">{{ p.location }}</span></td>
+            <td>
+              <span class="badge badge-stock-low">{{ stock }} {{ p.unit }}</span>
+            </td>
+            <td class="text-muted">{{ p.reorder_point }} {{ p.unit }}</td>
+            <td>
+              <span class="text-danger small fw-600">-{{ p.reorder_point - stock }} {{ p.unit }}</span>
+            </td>
+            <td>
+              <a href="{{ url_for('inbound') }}" class="btn btn-warning btn-sm text-dark">
+                <i class="fa-solid fa-plus me-1"></i>Order Stock
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Warning (approaching reorder point) -->
+{% if warning %}
+<div class="card mb-4">
+  <div class="card-header" style="background:rgba(6,182,212,.06); border-bottom:1px solid rgba(6,182,212,.2);">
+    <h5 class="text-info mb-0">
+      <i class="fa-solid fa-circle-exclamation me-2"></i>Approaching Reorder Point
+      <span class="badge bg-info ms-2">{{ warning|length }}</span>
+    </h5>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table mb-0">
+        <thead>
+          <tr><th>SKU</th><th>Product</th><th>Category</th><th>Location</th><th>Current</th><th>Reorder Point</th><th>Days Left (est.)</th></tr>
+        </thead>
+        <tbody>
+          {% for p in warning %}
+          {% set stock = p.current_stock() %}
+          <tr>
+            <td class="font-monospace text-muted small">{{ p.sku }}</td>
+            <td class="fw-500">{{ p.name }}</td>
+            <td><span class="badge bg-light text-dark border">{{ p.category }}</span></td>
+            <td><span class="location-badge">{{ p.location }}</span></td>
+            <td>
+              <span class="badge badge-stock-warning">{{ stock }} {{ p.unit }}</span>
+            </td>
+            <td class="text-muted">{{ p.reorder_point }} {{ p.unit }}</td>
+            <td>
+              <span class="text-warning small">
+                <i class="fa-regular fa-clock me-1"></i>Monitor closely
+              </span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

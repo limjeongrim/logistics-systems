@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}Inventory{% endblock %}
+{% block page_title %}Inventory{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex align-items-start justify-content-between">
+  <div>
+    <h1>Inventory</h1>
+    <p>View and manage all warehouse stock</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('inbound') }}" class="btn btn-success btn-sm">
+      <i class="fa-solid fa-plus me-1"></i>Add Stock
+    </a>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+  <div class="card-body py-3">
+    <form method="GET" action="{{ url_for('inventory') }}" class="row g-2 align-items-end">
+      <div class="col-sm-5">
+        <label class="form-label small mb-1">Search</label>
+        <input type="text" name="q" class="form-control form-control-sm"
+               placeholder="Product name or SKU..." value="{{ search }}">
+      </div>
+      <div class="col-sm-4">
+        <label class="form-label small mb-1">Category</label>
+        <select name="category" class="form-select form-select-sm">
+          <option value="">All Categories</option>
+          {% for cat in categories %}
+          <option value="{{ cat }}" {% if cat == selected_category %}selected{% endif %}>{{ cat }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-auto d-flex gap-2">
+        <button type="submit" class="btn btn-primary btn-sm">
+          <i class="fa-solid fa-magnifying-glass me-1"></i>Filter
+        </button>
+        <a href="{{ url_for('inventory') }}" class="btn btn-outline-secondary btn-sm">Clear</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Inventory table -->
+<div class="card">
+  <div class="card-header">
+    <h5><i class="fa-solid fa-boxes-stacked me-2 text-primary"></i>
+      Stock Levels
+      <span class="badge bg-secondary ms-2">{{ products|length }} items</span>
+    </h5>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table mb-0">
+        <thead>
+          <tr>
+            <th>SKU</th>
+            <th>Product Name</th>
+            <th>Category</th>
+            <th>Location</th>
+            <th>Current Stock</th>
+            <th>Reorder Point</th>
+            <th>Stock Level</th>
+            <th>Status</th>
+            <th>Last Updated</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in products %}
+          {% set stock = p.current_stock() %}
+          {% set status = p.stock_status() %}
+          <tr>
+            <td class="font-monospace text-muted small">{{ p.sku }}</td>
+            <td>
+              <div class="fw-500">{{ p.name }}</div>
+              {% if p.description %}
+              <div class="text-muted small">{{ p.description[:60] }}{% if p.description|length > 60 %}...{% endif %}</div>
+              {% endif %}
+            </td>
+            <td>
+              <span class="badge bg-light text-dark border">{{ p.category }}</span>
+            </td>
+            <td><span class="location-badge">{{ p.location }}</span></td>
+            <td>
+              <strong class="{% if status == 'out' %}text-secondary{% elif status == 'low' %}text-danger{% elif status == 'warning' %}text-warning{% else %}text-success{% endif %}">
+                {{ stock }}
+              </strong>
+              <span class="text-muted small">{{ p.unit }}</span>
+            </td>
+            <td class="text-muted">{{ p.reorder_point }} {{ p.unit }}</td>
+            <td style="min-width:120px;">
+              {% set pct = [[(stock / (p.reorder_point * 3) * 100)|int, 100]|min, 0]|max %}
+              <div class="stock-bar">
+                <div class="stock-bar-fill {{ status }}" style="width:{{ pct }}%"></div>
+              </div>
+              <div class="text-muted small mt-1">{{ stock }} / {{ p.reorder_point * 3 }} max</div>
+            </td>
+            <td>
+              {% if status == 'out' %}
+                <span class="badge badge-stock-out"><i class="fa-solid fa-xmark me-1"></i>Out of Stock</span>
+              {% elif status == 'low' %}
+                <span class="badge badge-stock-low"><i class="fa-solid fa-arrow-down me-1"></i>Low Stock</span>
+              {% elif status == 'warning' %}
+                <span class="badge badge-stock-warning"><i class="fa-solid fa-circle-exclamation me-1"></i>Warning</span>
+              {% else %}
+                <span class="badge badge-stock-ok"><i class="fa-solid fa-circle-check me-1"></i>OK</span>
+              {% endif %}
+            </td>
+            <td class="text-muted small">
+              {% if p.inventory and p.inventory.last_updated %}
+                {{ p.inventory.last_updated.strftime('%b %d, %Y') }}
+              {% else %}—{% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="9" class="text-center text-muted py-5">
+              <i class="fa-solid fa-box-open fa-2x mb-2 d-block"></i>
+              No products found matching your criteria.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

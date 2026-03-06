@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+{% block title %}Demand Forecast{% endblock %}
+{% block page_title %}Demand Forecasting{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Demand Forecasting</h1>
+  <p>Predicted outbound demand based on 90-day historical trends using weighted moving average</p>
+</div>
+
+<!-- Methodology note -->
+<div class="alert alert-info mb-4">
+  <i class="fa-solid fa-circle-info me-2"></i>
+  <strong>Algorithm:</strong> Weighted Moving Average (6-week window) combined with linear trend projection.
+  Historical outbound transactions from the last 90 days are aggregated weekly and used to forecast
+  the next 4 weeks of demand.
+</div>
+
+<div class="row g-4">
+  <!-- Product selector + Chart -->
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header">
+        <h5><i class="fa-solid fa-chart-bar me-2 text-primary"></i>Demand Chart</h5>
+        <form method="GET" class="d-flex gap-2" style="min-width:260px;">
+          <select name="product_id" class="form-select form-select-sm" onchange="this.form.submit()">
+            <option value="">— Select a product —</option>
+            {% for p in products %}
+            <option value="{{ p.id }}" {% if selected_product and selected_product.id == p.id %}selected{% endif %}>
+              {{ p.name }}
+            </option>
+            {% endfor %}
+          </select>
+        </form>
+      </div>
+      <div class="card-body">
+        {% if chart_data %}
+        <div class="chart-container" style="height:320px;">
+          <canvas id="forecastChart"></canvas>
+        </div>
+        <div class="row g-3 mt-2">
+          <div class="col-4 text-center">
+            <div class="small text-muted">Product</div>
+            <div class="fw-600">{{ selected_product.name }}</div>
+          </div>
+          <div class="col-4 text-center">
+            <div class="small text-muted">Current Stock</div>
+            <div class="fw-600">{{ selected_product.current_stock() }} {{ selected_product.unit }}</div>
+          </div>
+          <div class="col-4 text-center">
+            <div class="small text-muted">Reorder Point</div>
+            <div class="fw-600">{{ selected_product.reorder_point }} {{ selected_product.unit }}</div>
+          </div>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+          <i class="fa-solid fa-chart-bar fa-3x mb-3 d-block opacity-25"></i>
+          Select a product from the dropdown to view its demand forecast chart.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Legend / explanation -->
+  <div class="col-lg-5">
+    <div class="card mb-3">
+      <div class="card-header"><h6><i class="fa-solid fa-circle-info me-2"></i>How to Read</h6></div>
+      <div class="card-body">
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <div style="width:16px;height:16px;background:#3b82f6;border-radius:3px;"></div>
+          <div class="small"><strong>Historical (bars)</strong> — Actual outbound demand per week</div>
+        </div>
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <div style="width:16px;height:16px;background:rgba(245,158,11,.5);border:2px dashed #f59e0b;border-radius:3px;"></div>
+          <div class="small"><strong>Forecast (bars)</strong> — Projected demand for next 4 weeks</div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <div style="width:16px;height:3px;background:#ef4444;border-radius:3px;"></div>
+          <div class="small"><strong>Reorder line</strong> — Trigger restocking when stock falls to this level</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h6><i class="fa-solid fa-lightbulb me-2 text-warning"></i>Restocking Recommendation</h6></div>
+      <div class="card-body p-0">
+        {% set alerts_shown = namespace(count=0) %}
+        {% for row in forecasts_summary %}
+          {% if row.four_week > row.stock %}
+          {% set alerts_shown.count = alerts_shown.count + 1 %}
+          <div class="d-flex align-items-center gap-3 px-3 py-2" style="border-bottom:1px solid #f1f5f9;">
+            <i class="fa-solid fa-triangle-exclamation text-warning flex-shrink-0"></i>
+            <div>
+              <div class="small fw-600">{{ row.product.name }}</div>
+              <div class="text-muted" style="font-size:.75rem;">
+                Forecast: <strong>{{ row.four_week }}</strong> units/4wk &mdash;
+                Stock: <strong>{{ row.stock }}</strong>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+        {% endfor %}
+        {% if alerts_shown.count == 0 %}
+        <div class="text-center text-muted py-3 small">
+          <i class="fa-solid fa-circle-check text-success me-1"></i>
+          All products have sufficient stock for forecasted demand.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Summary table -->
+<div class="card mt-4">
+  <div class="card-header">
+    <h5><i class="fa-solid fa-table me-2 text-primary"></i>Forecast Summary — All Products</h5>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table mb-0">
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Category</th>
+            <th>Current Stock</th>
+            <th>Reorder Point</th>
+            <th>Forecast W+1</th>
+            <th>Forecast 4-Week Total</th>
+            <th>Stock Coverage</th>
+            <th>Recommendation</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in forecasts_summary %}
+          {% set stock_ok = row.stock >= row.four_week %}
+          <tr class="{% if not stock_ok %}forecast-row-alert{% elif row.stock < row.four_week * 1.5 %}forecast-row-warning{% endif %}">
+            <td>
+              <a href="{{ url_for('forecast', product_id=row.product.id) }}" class="text-decoration-none fw-500">
+                {{ row.product.name }}
+              </a>
+              <div class="text-muted small font-monospace">{{ row.product.sku }}</div>
+            </td>
+            <td><span class="badge bg-light text-dark border">{{ row.product.category }}</span></td>
+            <td>
+              <strong class="{% if row.stock == 0 %}text-secondary{% elif row.stock <= row.reorder %}text-danger{% else %}text-success{% endif %}">
+                {{ row.stock }}
+              </strong>
+              <span class="text-muted small">{{ row.product.unit }}</span>
+            </td>
+            <td class="text-muted">{{ row.reorder }}</td>
+            <td>
+              {% if row.next_week > 0 %}
+                <span class="fw-600">{{ row.next_week }}</span>
+                <span class="text-muted small">{{ row.product.unit }}</span>
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if row.four_week > 0 %}
+                <span class="fw-600">{{ row.four_week }}</span>
+                <span class="text-muted small">{{ row.product.unit }}</span>
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if row.four_week > 0 %}
+                {% set coverage_weeks = (row.stock / (row.four_week / 4)) | round(1) %}
+                <span class="badge {% if coverage_weeks < 1 %}bg-danger-subtle text-danger{% elif coverage_weeks < 2 %}bg-warning-subtle text-warning{% else %}bg-success-subtle text-success{% endif %}">
+                  ~{{ coverage_weeks }} wk
+                </span>
+              {% else %}
+                <span class="text-muted small">N/A</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if row.four_week == 0 %}
+                <span class="text-muted small">No demand</span>
+              {% elif not stock_ok %}
+                <span class="badge bg-danger-subtle text-danger">
+                  <i class="fa-solid fa-circle-arrow-up me-1"></i>Restock: +{{ (row.four_week - row.stock)|int }}
+                </span>
+              {% elif row.stock < row.four_week * 1.5 %}
+                <span class="badge bg-warning-subtle text-warning">
+                  <i class="fa-solid fa-circle-exclamation me-1"></i>Monitor
+                </span>
+              {% else %}
+                <span class="badge bg-success-subtle text-success">
+                  <i class="fa-solid fa-circle-check me-1"></i>Sufficient
+                </span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if chart_data %}
+<script>
+const cd = {{ chart_data | safe }};
+const ctx = document.getElementById('forecastChart').getContext('2d');
+
+const allLabels  = cd.hist_labels.concat(cd.fcast_labels);
+const histValues = cd.hist_values.concat(Array(cd.fcast_values.length).fill(null));
+const fcastValues = Array(cd.hist_values.length).fill(null).concat(cd.fcast_values);
+
+new Chart(ctx, {
+  type: 'bar',
+  data: {
+    labels: allLabels,
+    datasets: [
+      {
+        label: 'Historical Demand',
+        data: histValues,
+        backgroundColor: 'rgba(59,130,246,.7)',
+        borderColor: '#3b82f6',
+        borderWidth: 1,
+        borderRadius: 4,
+      },
+      {
+        label: 'Forecasted Demand',
+        data: fcastValues,
+        backgroundColor: 'rgba(245,158,11,.45)',
+        borderColor: '#f59e0b',
+        borderWidth: 2,
+        borderDash: [4, 4],
+        borderRadius: 4,
+      }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'top' },
+      tooltip: {
+        callbacks: {
+          afterTitle: function(items) {
+            const idx = items[0].dataIndex;
+            return idx >= cd.hist_values.length ? '(Forecast)' : '(Historical)';
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+        ticks: { font: { size: 11 } }
+      },
+      y: {
+        beginAtZero: true,
+        grid: { color: '#f1f5f9' },
+        ticks: { font: { size: 11 } },
+        title: { display: true, text: 'Units', font: { size: 11 } }
+      }
+    }
+  }
+});
+</script>
+{% endif %}
+{% endblock %}

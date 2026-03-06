@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block title %}Outbound{% endblock %}
+{% block page_title %}Outbound Recording{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Outbound Recording</h1>
+  <p>Record goods dispatched from the warehouse to customers or other destinations</p>
+</div>
+
+<div class="row g-4">
+  <!-- Form -->
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-header">
+        <h5><i class="fa-solid fa-arrow-up-from-bracket me-2 text-danger"></i>New Outbound Entry</h5>
+      </div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('outbound') }}">
+          <div class="mb-3">
+            <label class="form-label">Product <span class="text-danger">*</span></label>
+            <select class="form-select" name="product_id" id="productSelect" required>
+              <option value="">— Select product —</option>
+              {% for p in products %}
+              <option value="{{ p.id }}"
+                data-stock="{{ p.current_stock() }}"
+                data-unit="{{ p.unit }}"
+                data-location="{{ p.location }}"
+                data-sku="{{ p.sku }}"
+                {% if p.current_stock() == 0 %}disabled{% endif %}>
+                [{{ p.sku }}] {{ p.name }}{% if p.current_stock() == 0 %} (Out of stock){% endif %}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Product info card -->
+          <div id="productInfo" class="d-none mb-3 p-3 rounded-3" style="background:#f8fafc;border:1px solid #e2e8f0;">
+            <div class="row g-2 text-center">
+              <div class="col-4">
+                <div class="small text-muted">SKU</div>
+                <div class="fw-600 small" id="infoSku">—</div>
+              </div>
+              <div class="col-4">
+                <div class="small text-muted">Location</div>
+                <div class="fw-600 small" id="infoLocation">—</div>
+              </div>
+              <div class="col-4">
+                <div class="small text-muted">Available Stock</div>
+                <div class="fw-600 small" id="infoStock">—</div>
+              </div>
+            </div>
+            <div class="mt-2">
+              <div class="stock-bar">
+                <div class="stock-bar-fill" id="stockBar" style="width:0%"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Quantity <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <input type="number" class="form-control" name="quantity" id="qtyInput"
+                     min="1" placeholder="0" required>
+              <span class="input-group-text" id="unitLabel">units</span>
+            </div>
+            <div class="form-text text-muted" id="stockHint"></div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Sales Order / Reference</label>
+            <input type="text" class="form-control" name="reference" placeholder="e.g. SO-2024-001">
+          </div>
+          <div class="mb-4">
+            <label class="form-label">Notes</label>
+            <textarea class="form-control" name="notes" rows="2" placeholder="Optional notes..."></textarea>
+          </div>
+          <button type="submit" class="btn btn-danger w-100">
+            <i class="fa-solid fa-check me-2"></i>Record Outbound
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- History -->
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header">
+        <h5><i class="fa-solid fa-clock-rotate-left me-2 text-primary"></i>Recent Outbound (Last 20)</h5>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table mb-0">
+            <thead>
+              <tr>
+                <th>Date & Time</th>
+                <th>Product</th>
+                <th>Location</th>
+                <th>Qty</th>
+                <th>Reference</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for t in history %}
+              <tr>
+                <td class="text-muted small">{{ t.created_at.strftime('%b %d, %Y %H:%M') }}</td>
+                <td>
+                  <div class="fw-500">{{ t.product.name }}</div>
+                  <div class="text-muted small">{{ t.product.sku }}</div>
+                </td>
+                <td><span class="location-badge">{{ t.product.location }}</span></td>
+                <td>
+                  <span class="text-danger fw-600">-{{ t.quantity }}</span>
+                  <span class="text-muted small">{{ t.product.unit }}</span>
+                </td>
+                <td class="text-muted small">{{ t.reference or '—' }}</td>
+                <td class="text-muted small">{{ t.notes or '—' }}</td>
+              </tr>
+              {% else %}
+              <tr><td colspan="6" class="text-center text-muted py-4">No outbound records yet.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let maxStock = 0;
+document.getElementById('productSelect').addEventListener('change', function() {
+  const opt   = this.options[this.selectedIndex];
+  const info  = document.getElementById('productInfo');
+  const qtyInput = document.getElementById('qtyInput');
+  if (this.value) {
+    maxStock = parseInt(opt.dataset.stock);
+    document.getElementById('infoSku').textContent      = opt.dataset.sku;
+    document.getElementById('infoLocation').textContent = opt.dataset.location;
+    document.getElementById('infoStock').textContent    = maxStock + ' ' + opt.dataset.unit;
+    document.getElementById('unitLabel').textContent    = opt.dataset.unit;
+    document.getElementById('stockHint').textContent    = `Max available: ${maxStock} ${opt.dataset.unit}`;
+    qtyInput.max = maxStock;
+
+    const barEl = document.getElementById('stockBar');
+    const pct = Math.min(100, (maxStock / 200) * 100);
+    barEl.style.width = pct + '%';
+    barEl.className = 'stock-bar-fill ' + (maxStock === 0 ? 'out' : maxStock < 10 ? 'low' : maxStock < 30 ? 'warning' : 'ok');
+    info.classList.remove('d-none');
+  } else {
+    info.classList.add('d-none');
+    document.getElementById('unitLabel').textContent = 'units';
+    document.getElementById('stockHint').textContent = '';
+    qtyInput.max = '';
+    maxStock = 0;
+  }
+});
+</script>
+{% endblock %}
