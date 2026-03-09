@@ -1,15 +1,15 @@
 {% extends "base.html" %}
-{% block title %}Fleet{% endblock %}
-{% block page_title %}Fleet Management{% endblock %}
+{% block title %}차량{% endblock %}
+{% block page_title %}차량 관리{% endblock %}
 
 {% block content %}
 <div class="page-header d-flex align-items-start justify-content-between">
   <div>
-    <h1>Fleet Management</h1>
-    <p>Manage vehicles and drivers in your transportation network</p>
+    <h1>차량 관리</h1>
+    <p>운송 네트워크의 차량 및 기사를 관리하세요</p>
   </div>
   <a href="{{ url_for('new_vehicle') }}" class="btn btn-primary">
-    <i class="fa-solid fa-plus me-2"></i>Add Vehicle
+    <i class="fa-solid fa-plus me-2"></i>차량 추가
   </a>
 </div>
 
@@ -18,19 +18,19 @@
   <div class="col-sm-4">
     <div class="kpi-card">
       <div class="kpi-icon green"><i class="fa-solid fa-circle-check"></i></div>
-      <div><div class="kpi-value">{{ avail }}</div><div class="kpi-label">Available</div></div>
+      <div><div class="kpi-value">{{ avail }}</div><div class="kpi-label">가용</div></div>
     </div>
   </div>
   <div class="col-sm-4">
     <div class="kpi-card">
       <div class="kpi-icon cyan"><i class="fa-solid fa-route"></i></div>
-      <div><div class="kpi-value">{{ on_rt }}</div><div class="kpi-label">On Route</div></div>
+      <div><div class="kpi-value">{{ on_rt }}</div><div class="kpi-label">운행중</div></div>
     </div>
   </div>
   <div class="col-sm-4">
     <div class="kpi-card">
       <div class="kpi-icon amber"><i class="fa-solid fa-wrench"></i></div>
-      <div><div class="kpi-value">{{ maint }}</div><div class="kpi-label">Maintenance</div></div>
+      <div><div class="kpi-value">{{ maint }}</div><div class="kpi-label">점검중</div></div>
     </div>
   </div>
 </div>
@@ -38,14 +38,14 @@
 <div class="card">
   <div class="card-header">
     <h5><i class="fa-solid fa-truck me-2 text-primary"></i>
-      Fleet <span class="badge bg-secondary ms-2">{{ vehicles|length }} vehicles</span>
+      차량 <span class="badge bg-secondary ms-2">{{ vehicles|length }} 대</span>
     </h5>
   </div>
   <div class="card-body p-0">
     <div class="table-responsive">
       <table class="table mb-0">
         <thead>
-          <tr><th>Plate</th><th>Type</th><th>Capacity</th><th>Driver</th><th>Phone</th><th>Status</th><th>Home Base</th><th>Action</th></tr>
+          <tr><th>차량번호</th><th>차량 종류</th><th>적재량</th><th>기사</th><th>전화번호</th><th>상태</th><th>거점</th><th>작업</th></tr>
         </thead>
         <tbody>
           {% for v in vehicles %}
@@ -62,9 +62,9 @@
             <td class="text-muted small">{{ v.driver_phone or '—' }}</td>
             <td>
               <span class="badge v-status-{{ v.status }}">
-                {% if v.status == 'available' %}<i class="fa-solid fa-circle-check me-1"></i>Available
-                {% elif v.status == 'on_route' %}<i class="fa-solid fa-route me-1"></i>On Route
-                {% else %}<i class="fa-solid fa-wrench me-1"></i>Maintenance{% endif %}
+                {% if v.status == 'available' %}<i class="fa-solid fa-circle-check me-1"></i>가용
+                {% elif v.status == 'on_route' %}<i class="fa-solid fa-route me-1"></i>운행중
+                {% else %}<i class="fa-solid fa-wrench me-1"></i>점검중{% endif %}
               </span>
             </td>
             <td class="text-muted small">

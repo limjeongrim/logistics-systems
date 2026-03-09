@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Dashboard{% endblock %}
-{% block page_title %}Dashboard{% endblock %}
+{% block title %}대시보드{% endblock %}
+{% block page_title %}대시보드{% endblock %}
 
 {% block content %}
 <div class="page-header">
-  <h1>TMS Dashboard</h1>
-  <p>Live transportation overview — shipments, routes, and fleet status</p>
+  <h1>TMS 대시보드</h1>
+  <p>실시간 운송 현황 — 운송, 노선, 차량 상태</p>
 </div>
 
 <!-- KPIs -->
@@ -13,31 +13,31 @@
   <div class="col-sm-6 col-xl">
     <div class="kpi-card">
       <div class="kpi-icon cyan"><i class="fa-solid fa-box"></i></div>
-      <div><div class="kpi-value">{{ total }}</div><div class="kpi-label">Total Shipments</div></div>
+      <div><div class="kpi-value">{{ total }}</div><div class="kpi-label">전체 운송</div></div>
     </div>
   </div>
   <div class="col-sm-6 col-xl">
     <div class="kpi-card">
       <div class="kpi-icon blue"><i class="fa-solid fa-route"></i></div>
-      <div><div class="kpi-value">{{ in_transit }}</div><div class="kpi-label">In Transit</div></div>
+      <div><div class="kpi-value">{{ in_transit }}</div><div class="kpi-label">운송중</div></div>
     </div>
   </div>
   <div class="col-sm-6 col-xl">
     <div class="kpi-card">
       <div class="kpi-icon green"><i class="fa-solid fa-circle-check"></i></div>
-      <div><div class="kpi-value">{{ delivered_today }}</div><div class="kpi-label">Delivered Today</div></div>
+      <div><div class="kpi-value">{{ delivered_today }}</div><div class="kpi-label">오늘 배송완료</div></div>
     </div>
   </div>
   <div class="col-sm-6 col-xl">
     <div class="kpi-card">
       <div class="kpi-icon amber"><i class="fa-solid fa-clock"></i></div>
-      <div><div class="kpi-value">{{ pending }}</div><div class="kpi-label">Pending</div></div>
+      <div><div class="kpi-value">{{ pending }}</div><div class="kpi-label">대기중</div></div>
     </div>
   </div>
   <div class="col-sm-6 col-xl">
     <div class="kpi-card">
       <div class="kpi-icon green"><i class="fa-solid fa-truck"></i></div>
-      <div><div class="kpi-value">{{ avail_vehicles }}</div><div class="kpi-label">Available Vehicles</div></div>
+      <div><div class="kpi-value">{{ avail_vehicles }}</div><div class="kpi-label">가용 차량</div></div>
     </div>
   </div>
 </div>
@@ -47,12 +47,12 @@
   <div class="col-lg-8">
     <div class="card h-100">
       <div class="card-header">
-        <h5><i class="fa-solid fa-map me-2 text-primary"></i>Live Shipment Map</h5>
+        <h5><i class="fa-solid fa-map me-2 text-primary"></i>실시간 운송 지도</h5>
         <div class="d-flex gap-2 align-items-center small">
-          <span class="badge bg-secondary-subtle text-secondary">Pending</span>
-          <span class="badge bg-info-subtle text-info">Dispatched</span>
-          <span class="badge bg-primary-subtle text-primary">In Transit</span>
-          <span class="badge bg-success-subtle text-success">Delivered</span>
+          <span class="badge bg-secondary-subtle text-secondary">대기중</span>
+          <span class="badge bg-info-subtle text-info">배차됨</span>
+          <span class="badge bg-primary-subtle text-primary">운송중</span>
+          <span class="badge bg-success-subtle text-success">배송완료</span>
         </div>
       </div>
       <div class="card-body p-0">
@@ -62,13 +62,13 @@
   </div>
   <div class="col-lg-4">
     <div class="card mb-3">
-      <div class="card-header"><h6><i class="fa-solid fa-chart-pie me-2 text-primary"></i>Shipment Status</h6></div>
+      <div class="card-header"><h6><i class="fa-solid fa-chart-pie me-2 text-primary"></i>운송 상태</h6></div>
       <div class="card-body">
         <div style="height:180px;"><canvas id="statusChart"></canvas></div>
       </div>
     </div>
     <div class="card">
-      <div class="card-header"><h6><i class="fa-solid fa-chart-bar me-2 text-primary"></i>Monthly Volume</h6></div>
+      <div class="card-header"><h6><i class="fa-solid fa-chart-bar me-2 text-primary"></i>월간 물량</h6></div>
       <div class="card-body">
         <div style="height:140px;"><canvas id="monthlyChart"></canvas></div>
       </div>
@@ -81,13 +81,13 @@
   <div class="col-lg-8">
     <div class="card">
       <div class="card-header">
-        <h5><i class="fa-solid fa-clock-rotate-left me-2 text-primary"></i>Recent Shipments</h5>
-        <a href="{{ url_for('shipments') }}" class="btn btn-sm btn-outline-primary">View All</a>
+        <h5><i class="fa-solid fa-clock-rotate-left me-2 text-primary"></i>최근 운송</h5>
+        <a href="{{ url_for('shipments') }}" class="btn btn-sm btn-outline-primary">전체 보기</a>
       </div>
       <div class="card-body p-0">
         <div class="table-responsive">
           <table class="table mb-0">
-            <thead><tr><th>Shipment #</th><th>Customer</th><th>Route</th><th>Priority</th><th>Status</th><th>Cost</th></tr></thead>
+            <thead><tr><th>운송번호</th><th>고객</th><th>노선</th><th>우선순위</th><th>상태</th><th>비용</th></tr></thead>
             <tbody>
               {% for s in recent %}
               <tr>
@@ -124,22 +124,22 @@
   </div>
   <div class="col-lg-4">
     <div class="card">
-      <div class="card-header"><h5><i class="fa-solid fa-bolt me-2 text-warning"></i>Quick Actions</h5></div>
+      <div class="card-header"><h5><i class="fa-solid fa-bolt me-2 text-warning"></i>빠른 작업</h5></div>
       <div class="card-body d-grid gap-2">
         <a href="{{ url_for('new_shipment') }}" class="btn btn-primary">
-          <i class="fa-solid fa-plus me-2"></i>New Shipment
+          <i class="fa-solid fa-plus me-2"></i>신규 운송
         </a>
         <a href="{{ url_for('dispatch') }}" class="btn btn-outline-secondary">
-          <i class="fa-solid fa-truck-ramp-box me-2"></i>Dispatch Vehicles
+          <i class="fa-solid fa-truck-ramp-box me-2"></i>차량 배차
         </a>
         <a href="{{ url_for('routes_view') }}" class="btn btn-outline-secondary">
-          <i class="fa-solid fa-route me-2"></i>Route Optimizer
+          <i class="fa-solid fa-route me-2"></i>노선 최적화
         </a>
         <a href="{{ url_for('vehicles') }}" class="btn btn-outline-secondary">
-          <i class="fa-solid fa-truck me-2"></i>Fleet Status
+          <i class="fa-solid fa-truck me-2"></i>차량 현황
         </a>
         <a href="{{ url_for('reports') }}" class="btn btn-outline-secondary">
-          <i class="fa-solid fa-chart-bar me-2"></i>Reports
+          <i class="fa-solid fa-chart-bar me-2"></i>보고서
         </a>
       </div>
     </div>
@@ -180,10 +180,10 @@ geojson.features.forEach(f => {
       <div style="font-weight:700;font-size:.9rem;margin-bottom:6px;">${p.number}</div>
       <div style="font-size:.8rem;color:#64748b;margin-bottom:4px;">${p.customer}</div>
       <div style="font-size:.78rem;">
-        <b>From:</b> ${p.origin}<br>
-        <b>To:</b> ${p.dest}
+        <b>출발:</b> ${p.origin}<br>
+        <b>도착:</b> ${p.dest}
       </div>
-      <a href="/shipments/${p.id}" style="font-size:.78rem;color:#0891b2;">View details →</a>
+      <a href="/shipments/${p.id}" style="font-size:.78rem;color:#0891b2;">상세 보기 →</a>
     </div>
   `);
 
@@ -216,7 +216,7 @@ new Chart(document.getElementById('monthlyChart'), {
   type: 'bar',
   data: {
     labels: monthlyData.map(d => d.month),
-    datasets: [{ label: 'Shipments', data: monthlyData.map(d => d.count),
+    datasets: [{ label: '운송 건수', data: monthlyData.map(d => d.count),
       backgroundColor: 'rgba(8,145,178,.7)', borderRadius: 4 }]
   },
   options: { responsive: true, maintainAspectRatio: false,

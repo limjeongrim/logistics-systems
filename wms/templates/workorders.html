@@ -1,15 +1,15 @@
 {% extends "base.html" %}
-{% block title %}Work Orders{% endblock %}
-{% block page_title %}Work Orders{% endblock %}
+{% block title %}작업지시{% endblock %}
+{% block page_title %}작업지시{% endblock %}
 
 {% block content %}
 <div class="page-header d-flex align-items-start justify-content-between">
   <div>
-    <h1>Work Orders</h1>
-    <p>Manage outbound pick orders and track fulfillment progress</p>
+    <h1>작업지시</h1>
+    <p>출고 피킹 지시 관리 및 처리 진행 현황 추적</p>
   </div>
   <a href="{{ url_for('new_workorder') }}" class="btn btn-primary">
-    <i class="fa-solid fa-plus me-2"></i>New Work Order
+    <i class="fa-solid fa-plus me-2"></i>신규 작업지시
   </a>
 </div>
 
@@ -19,23 +19,23 @@
     <div class="d-flex gap-2 flex-wrap">
       <a href="{{ url_for('workorders') }}"
          class="btn btn-sm {% if not status_filter %}btn-primary{% else %}btn-outline-secondary{% endif %}">
-        All Orders
+        전체 주문
       </a>
       <a href="{{ url_for('workorders', status='pending') }}"
          class="btn btn-sm {% if status_filter == 'pending' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">
-        <i class="fa-solid fa-clock me-1"></i>Pending
+        <i class="fa-solid fa-clock me-1"></i>대기중
       </a>
       <a href="{{ url_for('workorders', status='in_progress') }}"
          class="btn btn-sm {% if status_filter == 'in_progress' %}btn-primary{% else %}btn-outline-secondary{% endif %}">
-        <i class="fa-solid fa-spinner me-1"></i>In Progress
+        <i class="fa-solid fa-spinner me-1"></i>진행중
       </a>
       <a href="{{ url_for('workorders', status='completed') }}"
          class="btn btn-sm {% if status_filter == 'completed' %}btn-success{% else %}btn-outline-secondary{% endif %}">
-        <i class="fa-solid fa-circle-check me-1"></i>Completed
+        <i class="fa-solid fa-circle-check me-1"></i>완료
       </a>
       <a href="{{ url_for('workorders', status='cancelled') }}"
          class="btn btn-sm {% if status_filter == 'cancelled' %}btn-danger{% else %}btn-outline-secondary{% endif %}">
-        <i class="fa-solid fa-ban me-1"></i>Cancelled
+        <i class="fa-solid fa-ban me-1"></i>취소됨
       </a>
     </div>
   </div>
@@ -44,7 +44,7 @@
 <div class="card">
   <div class="card-header">
     <h5><i class="fa-solid fa-clipboard-list me-2 text-primary"></i>
-      Work Orders
+      작업지시
       <span class="badge bg-secondary ms-2">{{ orders|length }}</span>
     </h5>
   </div>
@@ -54,14 +54,14 @@
       <table class="table mb-0">
         <thead>
           <tr>
-            <th>Order #</th>
-            <th>Customer</th>
-            <th>Priority</th>
-            <th>Status</th>
-            <th>Items</th>
-            <th>Progress</th>
-            <th>Created</th>
-            <th>Action</th>
+            <th>주문번호</th>
+            <th>고객</th>
+            <th>우선순위</th>
+            <th>상태</th>
+            <th>항목 수</th>
+            <th>진행률</th>
+            <th>생성일</th>
+            <th>작업</th>
           </tr>
         </thead>
         <tbody>
@@ -85,7 +85,7 @@
                 {{ wo.status.replace('_', ' ') | title }}
               </span>
             </td>
-            <td class="text-muted">{{ wo.items|length }} items</td>
+            <td class="text-muted">{{ wo.items|length }}개 항목</td>
             <td style="min-width:140px;">
               {% set pct = wo.completion_rate() %}
               <div class="d-flex align-items-center gap-2">
@@ -100,7 +100,7 @@
             <td>
               <a href="{{ url_for('workorder_detail', order_id=wo.id) }}"
                  class="btn btn-sm btn-outline-primary">
-                <i class="fa-solid fa-eye me-1"></i>View
+                <i class="fa-solid fa-eye me-1"></i>보기
               </a>
             </td>
           </tr>
@@ -111,10 +111,10 @@
     {% else %}
     <div class="text-center py-5 text-muted">
       <i class="fa-solid fa-clipboard-list fa-3x mb-3 d-block opacity-25"></i>
-      <h5>No work orders found</h5>
-      <p class="mb-3">Create your first work order to get started.</p>
+      <h5>작업지시가 없습니다</h5>
+      <p class="mb-3">첫 번째 작업지시를 생성하여 시작하세요.</p>
       <a href="{{ url_for('new_workorder') }}" class="btn btn-primary">
-        <i class="fa-solid fa-plus me-2"></i>New Work Order
+        <i class="fa-solid fa-plus me-2"></i>신규 작업지시
       </a>
     </div>
     {% endif %}

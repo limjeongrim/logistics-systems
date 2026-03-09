@@ -13,11 +13,11 @@
       <span class="badge bg-{{ s.priority | priority_badge }}-subtle text-{{ s.priority | priority_badge }} me-2">
         {{ s.priority | title }}
       </span>
-      Created {{ s.created_at.strftime('%B %d, %Y %H:%M') }}
+      등록일 {{ s.created_at.strftime('%Y년 %m월 %d일 %H:%M') }}
     </p>
   </div>
   <a href="{{ url_for('shipments') }}" class="btn btn-outline-secondary btn-sm">
-    <i class="fa-solid fa-arrow-left me-1"></i>Back
+    <i class="fa-solid fa-arrow-left me-1"></i>뒤로
   </a>
 </div>
 
@@ -26,31 +26,31 @@
   <div class="col-lg-4">
     <!-- Shipment info -->
     <div class="card mb-4">
-      <div class="card-header"><h6><i class="fa-solid fa-circle-info me-2 text-primary"></i>Shipment Details</h6></div>
+      <div class="card-header"><h6><i class="fa-solid fa-circle-info me-2 text-primary"></i>운송 상세</h6></div>
       <div class="card-body">
         <table class="table table-sm mb-0" style="font-size:.875rem;">
-          <tr><td class="text-muted">Customer</td><td class="fw-500">{{ s.customer_name }}</td></tr>
-          <tr><td class="text-muted">Phone</td><td>{{ s.customer_phone or '—' }}</td></tr>
-          <tr><td class="text-muted">Email</td><td class="small">{{ s.customer_email or '—' }}</td></tr>
-          <tr><td class="text-muted" colspan="2" style="padding-top:10px;"><strong>Route</strong></td></tr>
-          <tr><td class="text-muted">Origin</td>
+          <tr><td class="text-muted">고객</td><td class="fw-500">{{ s.customer_name }}</td></tr>
+          <tr><td class="text-muted">전화번호</td><td>{{ s.customer_phone or '—' }}</td></tr>
+          <tr><td class="text-muted">이메일</td><td class="small">{{ s.customer_email or '—' }}</td></tr>
+          <tr><td class="text-muted" colspan="2" style="padding-top:10px;"><strong>노선</strong></td></tr>
+          <tr><td class="text-muted">출발지</td>
               <td><span class="small">{{ s.origin_address }}</span></td></tr>
           {% if s.stops %}
-          <tr><td class="text-muted">Stops</td>
+          <tr><td class="text-muted">경유지</td>
               <td>{% for st in s.stops %}<span class="badge bg-info-subtle text-info me-1">{{ st.address.split(',')[0] }}</span>{% endfor %}</td></tr>
           {% endif %}
-          <tr><td class="text-muted">Destination</td>
+          <tr><td class="text-muted">목적지</td>
               <td><span class="small">{{ s.destination_address }}</span></td></tr>
-          <tr><td class="text-muted" colspan="2" style="padding-top:10px;"><strong>Cargo</strong></td></tr>
-          <tr><td class="text-muted">Weight</td><td>{{ s.weight_kg }} kg</td></tr>
-          <tr><td class="text-muted">Volume</td><td>{{ s.volume_m3 }} m³</td></tr>
-          <tr><td class="text-muted">Distance</td><td>{{ "%.1f"|format(s.distance_km or 0) }} km</td></tr>
-          <tr><td class="text-muted">Freight Cost</td><td class="fw-700 text-primary">${{ "%.2f"|format(s.freight_cost or 0) }}</td></tr>
-          <tr><td class="text-muted">Est. Delivery</td>
-              <td>{{ s.estimated_delivery.strftime('%b %d, %Y') if s.estimated_delivery else '—' }}</td></tr>
+          <tr><td class="text-muted" colspan="2" style="padding-top:10px;"><strong>화물</strong></td></tr>
+          <tr><td class="text-muted">중량</td><td>{{ s.weight_kg }} kg</td></tr>
+          <tr><td class="text-muted">부피</td><td>{{ s.volume_m3 }} m³</td></tr>
+          <tr><td class="text-muted">거리</td><td>{{ "%.1f"|format(s.distance_km or 0) }} km</td></tr>
+          <tr><td class="text-muted">운송 비용</td><td class="fw-700 text-primary">${{ "%.2f"|format(s.freight_cost or 0) }}</td></tr>
+          <tr><td class="text-muted">예정 배송일</td>
+              <td>{{ s.estimated_delivery.strftime('%Y년 %m월 %d일') if s.estimated_delivery else '—' }}</td></tr>
           {% if s.actual_delivery %}
-          <tr><td class="text-muted">Actual Delivery</td>
-              <td class="text-success">{{ s.actual_delivery.strftime('%b %d, %Y %H:%M') }}</td></tr>
+          <tr><td class="text-muted">실제 배송일</td>
+              <td class="text-success">{{ s.actual_delivery.strftime('%Y년 %m월 %d일 %H:%M') }}</td></tr>
           {% endif %}
         </table>
       </div>
@@ -59,16 +59,16 @@
     <!-- Vehicle info -->
     {% if s.dispatch %}
     <div class="card mb-4">
-      <div class="card-header"><h6><i class="fa-solid fa-truck me-2 text-primary"></i>Assigned Vehicle</h6></div>
+      <div class="card-header"><h6><i class="fa-solid fa-truck me-2 text-primary"></i>배정 차량</h6></div>
       <div class="card-body">
         <table class="table table-sm mb-0" style="font-size:.875rem;">
-          <tr><td class="text-muted">Plate</td><td class="fw-600 font-monospace">{{ s.dispatch.vehicle.plate }}</td></tr>
-          <tr><td class="text-muted">Type</td><td>{{ s.dispatch.vehicle.type_display() }}</td></tr>
-          <tr><td class="text-muted">Driver</td><td class="fw-500">{{ s.dispatch.vehicle.driver_name }}</td></tr>
-          <tr><td class="text-muted">Phone</td><td>{{ s.dispatch.vehicle.driver_phone }}</td></tr>
-          <tr><td class="text-muted">Dispatched</td><td class="small">{{ s.dispatch.assigned_at.strftime('%b %d, %H:%M') }}</td></tr>
+          <tr><td class="text-muted">차량번호</td><td class="fw-600 font-monospace">{{ s.dispatch.vehicle.plate }}</td></tr>
+          <tr><td class="text-muted">차량 종류</td><td>{{ s.dispatch.vehicle.type_display() }}</td></tr>
+          <tr><td class="text-muted">기사</td><td class="fw-500">{{ s.dispatch.vehicle.driver_name }}</td></tr>
+          <tr><td class="text-muted">전화번호</td><td>{{ s.dispatch.vehicle.driver_phone }}</td></tr>
+          <tr><td class="text-muted">배차 시각</td><td class="small">{{ s.dispatch.assigned_at.strftime('%m월 %d일 %H:%M') }}</td></tr>
           {% if s.dispatch.driver_notes %}
-          <tr><td class="text-muted">Notes</td><td class="small">{{ s.dispatch.driver_notes }}</td></tr>
+          <tr><td class="text-muted">메모</td><td class="small">{{ s.dispatch.driver_notes }}</td></tr>
           {% endif %}
         </table>
       </div>
@@ -78,7 +78,7 @@
     <!-- Status update -->
     {% if s.status not in ('delivered', 'cancelled') %}
     <div class="card mb-4">
-      <div class="card-header"><h6><i class="fa-solid fa-pen me-2"></i>Update Status</h6></div>
+      <div class="card-header"><h6><i class="fa-solid fa-pen me-2"></i>상태 변경</h6></div>
       <div class="card-body">
         <form method="POST" action="{{ url_for('update_status', sid=s.id) }}">
           <div class="mb-2">
@@ -92,10 +92,10 @@
           </div>
           <div class="mb-2">
             <input type="text" class="form-control form-control-sm" name="note"
-                   placeholder="Optional note for tracking...">
+                   placeholder="추적용 메모 (선택사항)...">
           </div>
           <button type="submit" class="btn btn-primary btn-sm w-100">
-            <i class="fa-solid fa-floppy-disk me-1"></i>Save Status
+            <i class="fa-solid fa-floppy-disk me-1"></i>상태 저장
           </button>
         </form>
       </div>
@@ -106,9 +106,9 @@
     <div class="card">
       <div class="card-body text-center">
         <i class="fa-solid fa-truck-ramp-box fa-2x text-muted mb-2"></i>
-        <p class="small text-muted mb-2">No vehicle assigned yet.</p>
+        <p class="small text-muted mb-2">아직 배정된 차량이 없습니다.</p>
         <a href="{{ url_for('dispatch') }}" class="btn btn-primary btn-sm">
-          <i class="fa-solid fa-truck me-1"></i>Go to Dispatch
+          <i class="fa-solid fa-truck me-1"></i>배차 화면으로 이동
         </a>
       </div>
     </div>
@@ -120,9 +120,9 @@
     <!-- Route map -->
     <div class="card mb-4">
       <div class="card-header">
-        <h5><i class="fa-solid fa-map me-2 text-primary"></i>Route Map</h5>
+        <h5><i class="fa-solid fa-map me-2 text-primary"></i>노선 지도</h5>
         <span class="small text-muted">{{ "%.1f"|format(s.distance_km or 0) }} km
-          {% if s.stops %}| {{ s.stops|length }} intermediate stop(s){% endif %}
+          {% if s.stops %}| 중간 경유지 {{ s.stops|length }}곳{% endif %}
         </span>
       </div>
       <div id="shipMap" style="height:320px;"></div>
@@ -131,8 +131,8 @@
     <!-- Tracking timeline -->
     <div class="card">
       <div class="card-header">
-        <h5><i class="fa-solid fa-timeline me-2 text-primary"></i>Tracking Timeline</h5>
-        <span class="badge bg-secondary-subtle text-secondary">{{ s.tracking_events|length }} events</span>
+        <h5><i class="fa-solid fa-timeline me-2 text-primary"></i>추적 타임라인</h5>
+        <span class="badge bg-secondary-subtle text-secondary">{{ s.tracking_events|length }} 건</span>
       </div>
       <div class="card-body">
         {% if s.tracking_events %}
@@ -145,7 +145,7 @@
             <div class="timeline-content">
               <div class="event-title">{{ evt.event_type.replace('_',' ') | title }}</div>
               <div class="event-meta">
-                <i class="fa-regular fa-clock me-1"></i>{{ evt.created_at.strftime('%b %d, %Y %H:%M') }}
+                <i class="fa-regular fa-clock me-1"></i>{{ evt.created_at.strftime('%Y년 %m월 %d일 %H:%M') }}
                 {% if evt.location_address %}
                 <span class="ms-2"><i class="fa-solid fa-location-dot me-1"></i>{{ evt.location_address }}</span>
                 {% endif %}
@@ -158,7 +158,7 @@
           {% endfor %}
         </div>
         {% else %}
-        <div class="text-center text-muted py-4">No tracking events yet.</div>
+        <div class="text-center text-muted py-4">추적 이벤트가 없습니다.</div>
         {% endif %}
       </div>
     </div>

@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Dashboard{% endblock %}
-{% block page_title %}Dashboard{% endblock %}
+{% block title %}대시보드{% endblock %}
+{% block page_title %}대시보드{% endblock %}
 
 {% block content %}
 <div class="page-header">
-  <h1>Dashboard</h1>
-  <p>Real-time overview of your warehouse operations</p>
+  <h1>대시보드</h1>
+  <p>창고 운영 현황 실시간 개요</p>
 </div>
 
 <!-- KPI Cards -->
@@ -15,7 +15,7 @@
       <div class="kpi-icon blue"><i class="fa-solid fa-boxes-stacked"></i></div>
       <div>
         <div class="kpi-value">{{ total_products }}</div>
-        <div class="kpi-label">Total Products</div>
+        <div class="kpi-label">전체 상품 수</div>
       </div>
     </div>
   </div>
@@ -24,7 +24,7 @@
       <div class="kpi-icon green"><i class="fa-solid fa-layer-group"></i></div>
       <div>
         <div class="kpi-value">{{ "{:,}".format(total_stock) }}</div>
-        <div class="kpi-label">Total Stock Units</div>
+        <div class="kpi-label">총 재고 수량</div>
       </div>
     </div>
   </div>
@@ -36,7 +36,7 @@
         </div>
         <div>
           <div class="kpi-value">{{ low_stock_count }}</div>
-          <div class="kpi-label">Low Stock Alerts</div>
+          <div class="kpi-label">재고 부족 알림</div>
         </div>
       </div>
     </a>
@@ -47,7 +47,7 @@
         <div class="kpi-icon amber"><i class="fa-solid fa-clipboard-list"></i></div>
         <div>
           <div class="kpi-value">{{ pending_orders }}</div>
-          <div class="kpi-label">Active Work Orders</div>
+          <div class="kpi-label">진행중 작업지시</div>
         </div>
       </div>
     </a>
@@ -59,7 +59,7 @@
   <div class="col-lg-8">
     <div class="card h-100">
       <div class="card-header">
-        <h5><i class="fa-solid fa-chart-area me-2 text-primary"></i>Transaction Trend (Last 30 Days)</h5>
+        <h5><i class="fa-solid fa-chart-area me-2 text-primary"></i>거래내역 추세 (최근 30일)</h5>
       </div>
       <div class="card-body">
         <div class="chart-container" style="height:260px;">
@@ -71,7 +71,7 @@
   <div class="col-lg-4">
     <div class="card h-100">
       <div class="card-header">
-        <h5><i class="fa-solid fa-chart-pie me-2 text-primary"></i>Stock by Category</h5>
+        <h5><i class="fa-solid fa-chart-pie me-2 text-primary"></i>카테고리별 재고</h5>
       </div>
       <div class="card-body d-flex align-items-center justify-content-center">
         <div class="chart-container" style="height:260px; width:100%;">
@@ -87,13 +87,13 @@
   <div class="col-lg-8">
     <div class="card">
       <div class="card-header">
-        <h5><i class="fa-solid fa-clock-rotate-left me-2 text-primary"></i>Recent Transactions</h5>
+        <h5><i class="fa-solid fa-clock-rotate-left me-2 text-primary"></i>최근 거래내역</h5>
         <div class="d-flex gap-2">
           <a href="{{ url_for('inbound') }}" class="btn btn-sm btn-outline-primary">
-            <i class="fa-solid fa-plus me-1"></i>Inbound
+            <i class="fa-solid fa-plus me-1"></i>입고
           </a>
           <a href="{{ url_for('outbound') }}" class="btn btn-sm btn-outline-secondary">
-            <i class="fa-solid fa-minus me-1"></i>Outbound
+            <i class="fa-solid fa-minus me-1"></i>출고
           </a>
         </div>
       </div>
@@ -102,12 +102,12 @@
           <table class="table mb-0">
             <thead>
               <tr>
-                <th>Date</th>
-                <th>Type</th>
-                <th>Product</th>
-                <th>Location</th>
-                <th>Qty</th>
-                <th>Reference</th>
+                <th>날짜</th>
+                <th>유형</th>
+                <th>상품</th>
+                <th>위치</th>
+                <th>수량</th>
+                <th>참조번호</th>
               </tr>
             </thead>
             <tbody>
@@ -116,9 +116,9 @@
                 <td class="text-muted small">{{ t.created_at.strftime('%b %d, %H:%M') }}</td>
                 <td>
                   {% if t.type == 'inbound' %}
-                    <span class="badge bg-success-subtle text-success"><i class="fa-solid fa-arrow-down me-1"></i>Inbound</span>
+                    <span class="badge bg-success-subtle text-success"><i class="fa-solid fa-arrow-down me-1"></i>입고</span>
                   {% else %}
-                    <span class="badge bg-danger-subtle text-danger"><i class="fa-solid fa-arrow-up me-1"></i>Outbound</span>
+                    <span class="badge bg-danger-subtle text-danger"><i class="fa-solid fa-arrow-up me-1"></i>출고</span>
                   {% endif %}
                 </td>
                 <td>
@@ -139,26 +139,26 @@
   <div class="col-lg-4">
     <div class="card">
       <div class="card-header">
-        <h5><i class="fa-solid fa-bolt me-2 text-warning"></i>Quick Actions</h5>
+        <h5><i class="fa-solid fa-bolt me-2 text-warning"></i>빠른 작업</h5>
       </div>
       <div class="card-body d-grid gap-2">
         <a href="{{ url_for('inbound') }}" class="btn btn-primary">
-          <i class="fa-solid fa-arrow-down-to-bracket me-2"></i>Record Inbound
+          <i class="fa-solid fa-arrow-down-to-bracket me-2"></i>입고 등록
         </a>
         <a href="{{ url_for('outbound') }}" class="btn btn-outline-secondary">
-          <i class="fa-solid fa-arrow-up-from-bracket me-2"></i>Record Outbound
+          <i class="fa-solid fa-arrow-up-from-bracket me-2"></i>출고 등록
         </a>
         <a href="{{ url_for('new_workorder') }}" class="btn btn-outline-secondary">
-          <i class="fa-solid fa-plus me-2"></i>New Work Order
+          <i class="fa-solid fa-plus me-2"></i>신규 작업지시
         </a>
         <a href="{{ url_for('alerts') }}" class="btn btn-outline-danger">
-          <i class="fa-solid fa-triangle-exclamation me-2"></i>View Alerts
+          <i class="fa-solid fa-triangle-exclamation me-2"></i>알림 보기
           {% if low_stock_count > 0 %}
             <span class="badge bg-danger ms-1">{{ low_stock_count }}</span>
           {% endif %}
         </a>
         <a href="{{ url_for('forecast') }}" class="btn btn-outline-info">
-          <i class="fa-solid fa-chart-line me-2"></i>Demand Forecast
+          <i class="fa-solid fa-chart-line me-2"></i>수요예측
         </a>
       </div>
     </div>
@@ -179,13 +179,13 @@ new Chart(trendCtx, {
     labels: trendData.map(d => d.date),
     datasets: [
       {
-        label: 'Inbound',
+        label: '입고',
         data: trendData.map(d => d.inbound),
         borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,.08)',
         tension: 0.4, fill: true, pointRadius: 0, borderWidth: 2,
       },
       {
-        label: 'Outbound',
+        label: '출고',
         data: trendData.map(d => d.outbound),
         borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,.08)',
         tension: 0.4, fill: true, pointRadius: 0, borderWidth: 2,

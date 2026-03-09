@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Dispatch{% endblock %}
-{% block page_title %}Dispatch{% endblock %}
+{% block title %}배차{% endblock %}
+{% block page_title %}배차{% endblock %}
 
 {% block content %}
 <div class="page-header">
-  <h1>Vehicle Dispatch</h1>
-  <p>Assign available vehicles to pending shipments</p>
+  <h1>차량 배차</h1>
+  <p>대기중인 운송에 가용 차량을 배정하세요</p>
 </div>
 
 <div class="row g-4">
@@ -14,7 +14,7 @@
     <div class="card h-100">
       <div class="card-header">
         <h5><i class="fa-solid fa-box me-2 text-warning"></i>
-          Pending Shipments
+          대기중 운송
           <span class="badge bg-warning text-dark ms-2">{{ pending_shipments|length }}</span>
         </h5>
       </div>
@@ -42,7 +42,7 @@
         {% else %}
         <div class="text-center text-muted py-5">
           <i class="fa-solid fa-circle-check fa-2x mb-2 text-success d-block"></i>
-          No pending shipments!
+          대기중인 운송이 없습니다!
         </div>
         {% endfor %}
       </div>
@@ -54,25 +54,25 @@
     <!-- Assignment form -->
     <div class="card mb-4">
       <div class="card-header">
-        <h5><i class="fa-solid fa-link me-2 text-primary"></i>Assign Vehicle</h5>
+        <h5><i class="fa-solid fa-link me-2 text-primary"></i>차량 배정</h5>
       </div>
       <div class="card-body">
         <div id="selectionHint" class="alert alert-info py-2 small mb-3">
           <i class="fa-solid fa-circle-info me-1"></i>
-          Select a shipment from the left panel to assign a vehicle.
+          왼쪽 패널에서 운송을 선택하여 차량을 배정하세요.
         </div>
         <form method="POST" action="{{ url_for('assign_vehicle') }}" id="dispatchForm">
           <input type="hidden" name="shipment_id" id="selectedShipmentId">
           <div class="mb-3">
-            <label class="form-label">Selected Shipment</label>
+            <label class="form-label">선택된 운송</label>
             <div id="selectedShipmentLabel" class="form-control bg-light text-muted" style="cursor:default;">
-              None selected
+              선택 없음
             </div>
           </div>
           <div class="mb-3">
-            <label class="form-label">Available Vehicle <span class="text-danger">*</span></label>
+            <label class="form-label">가용 차량 <span class="text-danger">*</span></label>
             <select class="form-select" name="vehicle_id" id="vehicleSelect" required>
-              <option value="">— Select vehicle —</option>
+              <option value="">— 차량 선택 —</option>
               {% for v in available_vehicles %}
               <option value="{{ v.id }}"
                 data-cap="{{ v.capacity_kg }}"
@@ -85,16 +85,16 @@
             </select>
             <div id="vehicleWarning" class="text-danger small mt-1 d-none">
               <i class="fa-solid fa-triangle-exclamation me-1"></i>
-              This vehicle may not have sufficient capacity.
+              이 차량은 적재량이 부족할 수 있습니다.
             </div>
           </div>
           <div class="mb-3">
-            <label class="form-label">Driver Notes</label>
+            <label class="form-label">기사 메모</label>
             <textarea class="form-control" name="driver_notes" rows="2"
-                      placeholder="Special instructions for the driver..."></textarea>
+                      placeholder="기사에게 전달할 특별 지시사항..."></textarea>
           </div>
           <button type="submit" class="btn btn-primary w-100" id="assignBtn" disabled>
-            <i class="fa-solid fa-truck-ramp-box me-2"></i>Assign & Dispatch
+            <i class="fa-solid fa-truck-ramp-box me-2"></i>배정 &amp; 배차
           </button>
         </form>
       </div>
@@ -103,12 +103,12 @@
     <!-- Active dispatches -->
     <div class="card">
       <div class="card-header">
-        <h5><i class="fa-solid fa-route me-2 text-primary"></i>Active Dispatches</h5>
+        <h5><i class="fa-solid fa-route me-2 text-primary"></i>진행중 배차</h5>
       </div>
       <div class="card-body p-0">
         <div class="table-responsive">
           <table class="table mb-0">
-            <thead><tr><th>Shipment</th><th>Vehicle / Driver</th><th>Route</th><th>Status</th><th>Assigned</th></tr></thead>
+            <thead><tr><th>운송</th><th>차량 / 기사</th><th>노선</th><th>상태</th><th>배차 시각</th></tr></thead>
             <tbody>
               {% for d in active_dispatches %}
               <tr>
@@ -132,10 +132,10 @@
                     {{ d.shipment.status.replace('_',' ') | title }}
                   </span>
                 </td>
-                <td class="text-muted small">{{ d.assigned_at.strftime('%b %d, %H:%M') }}</td>
+                <td class="text-muted small">{{ d.assigned_at.strftime('%m월 %d일 %H:%M') }}</td>
               </tr>
               {% else %}
-              <tr><td colspan="5" class="text-center text-muted py-3">No active dispatches.</td></tr>
+              <tr><td colspan="5" class="text-center text-muted py-3">진행중인 배차가 없습니다.</td></tr>
               {% endfor %}
             </tbody>
           </table>

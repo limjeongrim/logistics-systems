@@ -1,65 +1,65 @@
 {% extends "base.html" %}
-{% block title %}Add Vehicle{% endblock %}
-{% block page_title %}Add Vehicle{% endblock %}
+{% block title %}차량 추가{% endblock %}
+{% block page_title %}차량 추가{% endblock %}
 
 {% block content %}
 <div class="page-header">
-  <h1>Add Vehicle to Fleet</h1>
-  <p>Register a new vehicle and driver</p>
+  <h1>차량 등록</h1>
+  <p>새 차량 및 기사를 등록하세요</p>
 </div>
 
 <div class="row justify-content-center">
   <div class="col-lg-6">
     <div class="card">
       <div class="card-header">
-        <h5><i class="fa-solid fa-truck me-2 text-primary"></i>Vehicle Details</h5>
+        <h5><i class="fa-solid fa-truck me-2 text-primary"></i>차량 상세</h5>
       </div>
       <div class="card-body">
         <form method="POST">
           <div class="row g-3">
             <div class="col-sm-6">
-              <label class="form-label">Plate Number <span class="text-danger">*</span></label>
+              <label class="form-label">차량번호 <span class="text-danger">*</span></label>
               <input type="text" class="form-control" name="plate"
                      placeholder="TMS-X001" style="text-transform:uppercase;" required>
             </div>
             <div class="col-sm-6">
-              <label class="form-label">Vehicle Type <span class="text-danger">*</span></label>
+              <label class="form-label">차량 종류 <span class="text-danger">*</span></label>
               <select class="form-select" name="type" required>
-                <option value="">— Select type —</option>
-                <option value="truck_large">Large Truck (15,000 kg)</option>
-                <option value="truck_medium">Medium Truck (5,000 kg)</option>
-                <option value="van">Van (1,500 kg)</option>
-                <option value="motorcycle">Motorcycle (100 kg)</option>
-                <option value="refrigerated">Refrigerated Truck (8,000 kg)</option>
+                <option value="">— 종류 선택 —</option>
+                <option value="truck_large">대형 트럭 (15,000 kg)</option>
+                <option value="truck_medium">중형 트럭 (5,000 kg)</option>
+                <option value="van">밴 (1,500 kg)</option>
+                <option value="motorcycle">오토바이 (100 kg)</option>
+                <option value="refrigerated">냉동 트럭 (8,000 kg)</option>
               </select>
             </div>
             <div class="col-sm-6">
-              <label class="form-label">Capacity (kg)</label>
+              <label class="form-label">적재량 (kg)</label>
               <input type="number" class="form-control" name="capacity_kg" min="0" step="100" placeholder="5000">
             </div>
             <div class="col-sm-6">
-              <label class="form-label">Capacity (m³)</label>
+              <label class="form-label">적재량 (m³)</label>
               <input type="number" class="form-control" name="capacity_m3" min="0" step="0.5" placeholder="25">
             </div>
             <div class="col-sm-6">
-              <label class="form-label">Driver Name</label>
-              <input type="text" class="form-control" name="driver_name" placeholder="Full name">
+              <label class="form-label">기사 이름</label>
+              <input type="text" class="form-control" name="driver_name" placeholder="성명">
             </div>
             <div class="col-sm-6">
-              <label class="form-label">Driver Phone</label>
+              <label class="form-label">기사 전화번호</label>
               <input type="text" class="form-control" name="driver_phone" placeholder="010-xxxx-xxxx">
             </div>
             <div class="col-12">
-              <label class="form-label">Notes</label>
-              <textarea class="form-control" name="notes" rows="2" placeholder="Special features, restrictions..."></textarea>
+              <label class="form-label">메모</label>
+              <textarea class="form-control" name="notes" rows="2" placeholder="특수 기능, 제한사항..."></textarea>
             </div>
           </div>
           <hr class="my-4">
           <div class="d-flex gap-2">
             <button type="submit" class="btn btn-primary">
-              <i class="fa-solid fa-plus me-2"></i>Add to Fleet
+              <i class="fa-solid fa-plus me-2"></i>차량 등록
             </button>
-            <a href="{{ url_for('vehicles') }}" class="btn btn-outline-secondary">Cancel</a>
+            <a href="{{ url_for('vehicles') }}" class="btn btn-outline-secondary">취소</a>
           </div>
         </form>
       </div>

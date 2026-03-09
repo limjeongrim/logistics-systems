@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Outbound{% endblock %}
-{% block page_title %}Outbound Recording{% endblock %}
+{% block title %}출고{% endblock %}
+{% block page_title %}출고 등록{% endblock %}
 
 {% block content %}
 <div class="page-header">
-  <h1>Outbound Recording</h1>
-  <p>Record goods dispatched from the warehouse to customers or other destinations</p>
+  <h1>출고 등록</h1>
+  <p>창고에서 고객 또는 다른 목적지로 출고된 상품을 등록합니다</p>
 </div>
 
 <div class="row g-4">
@@ -13,14 +13,14 @@
   <div class="col-lg-5">
     <div class="card">
       <div class="card-header">
-        <h5><i class="fa-solid fa-arrow-up-from-bracket me-2 text-danger"></i>New Outbound Entry</h5>
+        <h5><i class="fa-solid fa-arrow-up-from-bracket me-2 text-danger"></i>신규 출고 등록</h5>
       </div>
       <div class="card-body">
         <form method="POST" action="{{ url_for('outbound') }}">
           <div class="mb-3">
-            <label class="form-label">Product <span class="text-danger">*</span></label>
+            <label class="form-label">상품 <span class="text-danger">*</span></label>
             <select class="form-select" name="product_id" id="productSelect" required>
-              <option value="">— Select product —</option>
+              <option value="">— 상품 선택 —</option>
               {% for p in products %}
               <option value="{{ p.id }}"
                 data-stock="{{ p.current_stock() }}"
@@ -28,7 +28,7 @@
                 data-location="{{ p.location }}"
                 data-sku="{{ p.sku }}"
                 {% if p.current_stock() == 0 %}disabled{% endif %}>
-                [{{ p.sku }}] {{ p.name }}{% if p.current_stock() == 0 %} (Out of stock){% endif %}
+                [{{ p.sku }}] {{ p.name }}{% if p.current_stock() == 0 %} (재고 없음){% endif %}
               </option>
               {% endfor %}
             </select>
@@ -42,11 +42,11 @@
                 <div class="fw-600 small" id="infoSku">—</div>
               </div>
               <div class="col-4">
-                <div class="small text-muted">Location</div>
+                <div class="small text-muted">위치</div>
                 <div class="fw-600 small" id="infoLocation">—</div>
               </div>
               <div class="col-4">
-                <div class="small text-muted">Available Stock</div>
+                <div class="small text-muted">가용 재고</div>
                 <div class="fw-600 small" id="infoStock">—</div>
               </div>
             </div>
@@ -58,24 +58,24 @@
           </div>
 
           <div class="mb-3">
-            <label class="form-label">Quantity <span class="text-danger">*</span></label>
+            <label class="form-label">수량 <span class="text-danger">*</span></label>
             <div class="input-group">
               <input type="number" class="form-control" name="quantity" id="qtyInput"
                      min="1" placeholder="0" required>
-              <span class="input-group-text" id="unitLabel">units</span>
+              <span class="input-group-text" id="unitLabel">단위</span>
             </div>
             <div class="form-text text-muted" id="stockHint"></div>
           </div>
           <div class="mb-3">
-            <label class="form-label">Sales Order / Reference</label>
-            <input type="text" class="form-control" name="reference" placeholder="e.g. SO-2024-001">
+            <label class="form-label">수주번호 / 참조번호</label>
+            <input type="text" class="form-control" name="reference" placeholder="예) SO-2024-001">
           </div>
           <div class="mb-4">
-            <label class="form-label">Notes</label>
-            <textarea class="form-control" name="notes" rows="2" placeholder="Optional notes..."></textarea>
+            <label class="form-label">메모</label>
+            <textarea class="form-control" name="notes" rows="2" placeholder="선택 메모..."></textarea>
           </div>
           <button type="submit" class="btn btn-danger w-100">
-            <i class="fa-solid fa-check me-2"></i>Record Outbound
+            <i class="fa-solid fa-check me-2"></i>출고 등록
           </button>
         </form>
       </div>
@@ -86,19 +86,19 @@
   <div class="col-lg-7">
     <div class="card">
       <div class="card-header">
-        <h5><i class="fa-solid fa-clock-rotate-left me-2 text-primary"></i>Recent Outbound (Last 20)</h5>
+        <h5><i class="fa-solid fa-clock-rotate-left me-2 text-primary"></i>최근 출고 내역 (최근 20건)</h5>
       </div>
       <div class="card-body p-0">
         <div class="table-responsive">
           <table class="table mb-0">
             <thead>
               <tr>
-                <th>Date & Time</th>
-                <th>Product</th>
-                <th>Location</th>
-                <th>Qty</th>
-                <th>Reference</th>
-                <th>Notes</th>
+                <th>날짜 및 시간</th>
+                <th>상품</th>
+                <th>위치</th>
+                <th>수량</th>
+                <th>참조번호</th>
+                <th>메모</th>
               </tr>
             </thead>
             <tbody>
@@ -118,7 +118,7 @@
                 <td class="text-muted small">{{ t.notes or '—' }}</td>
               </tr>
               {% else %}
-              <tr><td colspan="6" class="text-center text-muted py-4">No outbound records yet.</td></tr>
+              <tr><td colspan="6" class="text-center text-muted py-4">출고 기록이 없습니다.</td></tr>
               {% endfor %}
             </tbody>
           </table>
@@ -142,7 +142,7 @@ document.getElementById('productSelect').addEventListener('change', function() {
     document.getElementById('infoLocation').textContent = opt.dataset.location;
     document.getElementById('infoStock').textContent    = maxStock + ' ' + opt.dataset.unit;
     document.getElementById('unitLabel').textContent    = opt.dataset.unit;
-    document.getElementById('stockHint').textContent    = `Max available: ${maxStock} ${opt.dataset.unit}`;
+    document.getElementById('stockHint').textContent    = `최대 가용 수량: ${maxStock} ${opt.dataset.unit}`;
     qtyInput.max = maxStock;
 
     const barEl = document.getElementById('stockBar');
@@ -152,7 +152,7 @@ document.getElementById('productSelect').addEventListener('change', function() {
     info.classList.remove('d-none');
   } else {
     info.classList.add('d-none');
-    document.getElementById('unitLabel').textContent = 'units';
+    document.getElementById('unitLabel').textContent = '단위';
     document.getElementById('stockHint').textContent = '';
     qtyInput.max = '';
     maxStock = 0;

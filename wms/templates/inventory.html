@@ -1,16 +1,16 @@
 {% extends "base.html" %}
-{% block title %}Inventory{% endblock %}
-{% block page_title %}Inventory{% endblock %}
+{% block title %}재고{% endblock %}
+{% block page_title %}재고{% endblock %}
 
 {% block content %}
 <div class="page-header d-flex align-items-start justify-content-between">
   <div>
-    <h1>Inventory</h1>
-    <p>View and manage all warehouse stock</p>
+    <h1>재고</h1>
+    <p>창고 전체 재고 현황 조회 및 관리</p>
   </div>
   <div class="d-flex gap-2">
     <a href="{{ url_for('inbound') }}" class="btn btn-success btn-sm">
-      <i class="fa-solid fa-plus me-1"></i>Add Stock
+      <i class="fa-solid fa-plus me-1"></i>재고 추가
     </a>
   </div>
 </div>
@@ -20,14 +20,14 @@
   <div class="card-body py-3">
     <form method="GET" action="{{ url_for('inventory') }}" class="row g-2 align-items-end">
       <div class="col-sm-5">
-        <label class="form-label small mb-1">Search</label>
+        <label class="form-label small mb-1">검색</label>
         <input type="text" name="q" class="form-control form-control-sm"
-               placeholder="Product name or SKU..." value="{{ search }}">
+               placeholder="상품명 또는 SKU..." value="{{ search }}">
       </div>
       <div class="col-sm-4">
-        <label class="form-label small mb-1">Category</label>
+        <label class="form-label small mb-1">카테고리</label>
         <select name="category" class="form-select form-select-sm">
-          <option value="">All Categories</option>
+          <option value="">전체 카테고리</option>
           {% for cat in categories %}
           <option value="{{ cat }}" {% if cat == selected_category %}selected{% endif %}>{{ cat }}</option>
           {% endfor %}
@@ -35,9 +35,9 @@
       </div>
       <div class="col-auto d-flex gap-2">
         <button type="submit" class="btn btn-primary btn-sm">
-          <i class="fa-solid fa-magnifying-glass me-1"></i>Filter
+          <i class="fa-solid fa-magnifying-glass me-1"></i>필터
         </button>
-        <a href="{{ url_for('inventory') }}" class="btn btn-outline-secondary btn-sm">Clear</a>
+        <a href="{{ url_for('inventory') }}" class="btn btn-outline-secondary btn-sm">초기화</a>
       </div>
     </form>
   </div>
@@ -47,8 +47,8 @@
 <div class="card">
   <div class="card-header">
     <h5><i class="fa-solid fa-boxes-stacked me-2 text-primary"></i>
-      Stock Levels
-      <span class="badge bg-secondary ms-2">{{ products|length }} items</span>
+      재고 수준
+      <span class="badge bg-secondary ms-2">{{ products|length }}개 항목</span>
     </h5>
   </div>
   <div class="card-body p-0">
@@ -57,14 +57,14 @@
         <thead>
           <tr>
             <th>SKU</th>
-            <th>Product Name</th>
-            <th>Category</th>
-            <th>Location</th>
-            <th>Current Stock</th>
-            <th>Reorder Point</th>
-            <th>Stock Level</th>
-            <th>Status</th>
-            <th>Last Updated</th>
+            <th>상품명</th>
+            <th>카테고리</th>
+            <th>위치</th>
+            <th>현재 재고</th>
+            <th>재주문점</th>
+            <th>재고 수준</th>
+            <th>상태</th>
+            <th>최종 업데이트</th>
           </tr>
         </thead>
         <tbody>
@@ -95,17 +95,17 @@
               <div class="stock-bar">
                 <div class="stock-bar-fill {{ status }}" style="width:{{ pct }}%"></div>
               </div>
-              <div class="text-muted small mt-1">{{ stock }} / {{ p.reorder_point * 3 }} max</div>
+              <div class="text-muted small mt-1">{{ stock }} / {{ p.reorder_point * 3 }} 최대</div>
             </td>
             <td>
               {% if status == 'out' %}
-                <span class="badge badge-stock-out"><i class="fa-solid fa-xmark me-1"></i>Out of Stock</span>
+                <span class="badge badge-stock-out"><i class="fa-solid fa-xmark me-1"></i>재고 없음</span>
               {% elif status == 'low' %}
-                <span class="badge badge-stock-low"><i class="fa-solid fa-arrow-down me-1"></i>Low Stock</span>
+                <span class="badge badge-stock-low"><i class="fa-solid fa-arrow-down me-1"></i>재고 부족</span>
               {% elif status == 'warning' %}
-                <span class="badge badge-stock-warning"><i class="fa-solid fa-circle-exclamation me-1"></i>Warning</span>
+                <span class="badge badge-stock-warning"><i class="fa-solid fa-circle-exclamation me-1"></i>주의</span>
               {% else %}
-                <span class="badge badge-stock-ok"><i class="fa-solid fa-circle-check me-1"></i>OK</span>
+                <span class="badge badge-stock-ok"><i class="fa-solid fa-circle-check me-1"></i>정상</span>
               {% endif %}
             </td>
             <td class="text-muted small">
@@ -118,7 +118,7 @@
           <tr>
             <td colspan="9" class="text-center text-muted py-5">
               <i class="fa-solid fa-box-open fa-2x mb-2 d-block"></i>
-              No products found matching your criteria.
+              검색 조건에 맞는 상품이 없습니다.
             </td>
           </tr>
           {% endfor %}

@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Inbound{% endblock %}
-{% block page_title %}Inbound Recording{% endblock %}
+{% block title %}입고{% endblock %}
+{% block page_title %}입고 등록{% endblock %}
 
 {% block content %}
 <div class="page-header">
-  <h1>Inbound Recording</h1>
-  <p>Record goods received from suppliers into the warehouse</p>
+  <h1>입고 등록</h1>
+  <p>공급업체로부터 입고된 상품을 창고에 등록합니다</p>
 </div>
 
 <div class="row g-4">
@@ -13,14 +13,14 @@
   <div class="col-lg-5">
     <div class="card">
       <div class="card-header">
-        <h5><i class="fa-solid fa-arrow-down-to-bracket me-2 text-success"></i>New Inbound Entry</h5>
+        <h5><i class="fa-solid fa-arrow-down-to-bracket me-2 text-success"></i>신규 입고 등록</h5>
       </div>
       <div class="card-body">
         <form method="POST" action="{{ url_for('inbound') }}">
           <div class="mb-3">
-            <label class="form-label">Product <span class="text-danger">*</span></label>
+            <label class="form-label">상품 <span class="text-danger">*</span></label>
             <select class="form-select" name="product_id" id="productSelect" required>
-              <option value="">— Select product —</option>
+              <option value="">— 상품 선택 —</option>
               {% for p in products %}
               <option value="{{ p.id }}"
                 data-stock="{{ p.current_stock() }}"
@@ -41,37 +41,37 @@
                 <div class="fw-600 small" id="infoSku">—</div>
               </div>
               <div class="col-4">
-                <div class="small text-muted">Location</div>
+                <div class="small text-muted">위치</div>
                 <div class="fw-600 small" id="infoLocation">—</div>
               </div>
               <div class="col-4">
-                <div class="small text-muted">Current Stock</div>
+                <div class="small text-muted">현재 재고</div>
                 <div class="fw-600 small" id="infoStock">—</div>
               </div>
             </div>
           </div>
 
           <div class="mb-3">
-            <label class="form-label">Quantity <span class="text-danger">*</span></label>
+            <label class="form-label">수량 <span class="text-danger">*</span></label>
             <div class="input-group">
               <input type="number" class="form-control" name="quantity" min="1" placeholder="0" required>
-              <span class="input-group-text" id="unitLabel">units</span>
+              <span class="input-group-text" id="unitLabel">단위</span>
             </div>
           </div>
           <div class="mb-3">
-            <label class="form-label">Purchase Order / Reference</label>
-            <input type="text" class="form-control" name="reference" placeholder="e.g. PO-2024-001">
+            <label class="form-label">발주번호 / 참조번호</label>
+            <input type="text" class="form-control" name="reference" placeholder="예) PO-2024-001">
           </div>
           <div class="mb-3">
-            <label class="form-label">Supplier</label>
-            <input type="text" class="form-control" name="supplier" placeholder="Supplier name">
+            <label class="form-label">공급업체</label>
+            <input type="text" class="form-control" name="supplier" placeholder="공급업체 이름">
           </div>
           <div class="mb-4">
-            <label class="form-label">Notes</label>
-            <textarea class="form-control" name="notes" rows="2" placeholder="Optional notes..."></textarea>
+            <label class="form-label">메모</label>
+            <textarea class="form-control" name="notes" rows="2" placeholder="선택 메모..."></textarea>
           </div>
           <button type="submit" class="btn btn-success w-100">
-            <i class="fa-solid fa-check me-2"></i>Record Inbound
+            <i class="fa-solid fa-check me-2"></i>입고 등록
           </button>
         </form>
       </div>
@@ -82,19 +82,19 @@
   <div class="col-lg-7">
     <div class="card">
       <div class="card-header">
-        <h5><i class="fa-solid fa-clock-rotate-left me-2 text-primary"></i>Recent Inbound (Last 20)</h5>
+        <h5><i class="fa-solid fa-clock-rotate-left me-2 text-primary"></i>최근 입고 내역 (최근 20건)</h5>
       </div>
       <div class="card-body p-0">
         <div class="table-responsive">
           <table class="table mb-0">
             <thead>
               <tr>
-                <th>Date & Time</th>
-                <th>Product</th>
-                <th>Location</th>
-                <th>Qty</th>
-                <th>Supplier</th>
-                <th>Reference</th>
+                <th>날짜 및 시간</th>
+                <th>상품</th>
+                <th>위치</th>
+                <th>수량</th>
+                <th>공급업체</th>
+                <th>참조번호</th>
               </tr>
             </thead>
             <tbody>
@@ -114,7 +114,7 @@
                 <td class="text-muted small">{{ t.reference or '—' }}</td>
               </tr>
               {% else %}
-              <tr><td colspan="6" class="text-center text-muted py-4">No inbound records yet.</td></tr>
+              <tr><td colspan="6" class="text-center text-muted py-4">입고 기록이 없습니다.</td></tr>
               {% endfor %}
             </tbody>
           </table>
@@ -138,7 +138,7 @@ document.getElementById('productSelect').addEventListener('change', function() {
     info.classList.remove('d-none');
   } else {
     info.classList.add('d-none');
-    document.getElementById('unitLabel').textContent = 'units';
+    document.getElementById('unitLabel').textContent = '단위';
   }
 });
 </script>

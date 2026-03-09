@@ -1,11 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Routes{% endblock %}
-{% block page_title %}Routes & Optimization{% endblock %}
+{% block title %}노선{% endblock %}
+{% block page_title %}노선 &amp; 최적화{% endblock %}
 
 {% block content %}
 <div class="page-header">
-  <h1>Routes &amp; Optimization</h1>
-  <p>View active routes on map and optimize multi-stop deliveries using nearest-neighbor algorithm</p>
+  <h1>노선 &amp; 최적화</h1>
+  <p>지도에서 활성 노선을 확인하고 최근접 이웃 알고리즘을 이용해 다중 경유지 배송을 최적화하세요</p>
 </div>
 
 <div class="row g-4">
@@ -13,10 +13,10 @@
   <div class="col-lg-8">
     <div class="card mb-4">
       <div class="card-header">
-        <h5><i class="fa-solid fa-map me-2 text-primary"></i>Active Route Map</h5>
+        <h5><i class="fa-solid fa-map me-2 text-primary"></i>활성 노선 지도</h5>
         <div class="d-flex gap-2 align-items-center small">
-          <span style="width:20px;height:3px;background:#3b82f6;display:inline-block;border-radius:2px;"></span> In Transit
-          <span style="width:20px;height:3px;background:#06b6d4;display:inline-block;border-radius:2px;margin-left:8px;"></span> Dispatched
+          <span style="width:20px;height:3px;background:#3b82f6;display:inline-block;border-radius:2px;"></span> 운송중
+          <span style="width:20px;height:3px;background:#06b6d4;display:inline-block;border-radius:2px;margin-left:8px;"></span> 배차됨
         </div>
       </div>
       <div id="routeMap" style="height:460px;"></div>
@@ -27,26 +27,26 @@
     <div class="card">
       <div class="card-header">
         <h5><i class="fa-solid fa-bolt me-2 text-warning"></i>
-          Optimization Result — {{ opt_result.shipment.shipment_number }}
+          최적화 결과 — {{ opt_result.shipment.shipment_number }}
         </h5>
       </div>
       <div class="card-body">
         {% if opt_result.changed %}
         <div class="alert alert-success mb-3">
           <i class="fa-solid fa-circle-check me-2"></i>
-          Route optimized! Saved <strong>{{ opt_result.saved_km }} km</strong>
+          노선 최적화 완료! <strong>{{ opt_result.saved_km }} km</strong> 단축
           ({{ opt_result.orig_dist }} → {{ opt_result.opt_dist }} km)
         </div>
         {% else %}
         <div class="alert alert-info mb-3">
           <i class="fa-solid fa-circle-info me-2"></i>
-          The current route is already optimal ({{ opt_result.orig_dist }} km).
+          현재 노선이 이미 최적입니다 ({{ opt_result.orig_dist }} km).
         </div>
         {% endif %}
 
         <div class="row g-3">
           <div class="col-sm-6">
-            <h6 class="fw-600 mb-2 text-muted small">ORIGINAL ORDER</h6>
+            <h6 class="fw-600 mb-2 text-muted small">기존 순서</h6>
             {% for stop in opt_result.original %}
             <div class="stop-card">
               <div class="stop-idx {% if loop.first %}origin{% elif loop.last %}destination{% endif %}">
@@ -59,11 +59,11 @@
             </div>
             {% endfor %}
             <div class="text-muted small mt-1">
-              <i class="fa-solid fa-road me-1"></i>Total: {{ opt_result.orig_dist }} km
+              <i class="fa-solid fa-road me-1"></i>합계: {{ opt_result.orig_dist }} km
             </div>
           </div>
           <div class="col-sm-6">
-            <h6 class="fw-600 mb-2 text-primary small">OPTIMIZED ORDER</h6>
+            <h6 class="fw-600 mb-2 text-primary small">최적화 순서</h6>
             {% for stop in opt_result.optimized %}
             <div class="stop-card">
               <div class="stop-idx {% if loop.first %}origin{% elif loop.last %}destination{% endif %}">
@@ -76,9 +76,9 @@
             </div>
             {% endfor %}
             <div class="text-primary small mt-1 fw-600">
-              <i class="fa-solid fa-road me-1"></i>Total: {{ opt_result.opt_dist }} km
+              <i class="fa-solid fa-road me-1"></i>합계: {{ opt_result.opt_dist }} km
               {% if opt_result.changed %}
-              <span class="text-success ms-1">(saved {{ opt_result.saved_km }} km)</span>
+              <span class="text-success ms-1">({{ opt_result.saved_km }} km 단축)</span>
               {% endif %}
             </div>
           </div>
@@ -93,34 +93,34 @@
     <!-- Route optimizer form -->
     <div class="card mb-4">
       <div class="card-header">
-        <h5><i class="fa-solid fa-wand-magic-sparkles me-2 text-warning"></i>Route Optimizer</h5>
+        <h5><i class="fa-solid fa-wand-magic-sparkles me-2 text-warning"></i>노선 최적화</h5>
       </div>
       <div class="card-body">
         <p class="small text-muted mb-3">
-          Select a multi-stop shipment to optimize the order of intermediate stops
-          using the <strong>Nearest Neighbor</strong> heuristic (greedy TSP approximation).
+          중간 경유지가 있는 운송을 선택하여 <strong>최근접 이웃</strong> 휴리스틱(탐욕적 TSP 근사)으로
+          경유 순서를 최적화하세요.
         </p>
         {% if multi_stop %}
         <form method="GET">
-          <label class="form-label">Shipment with Stops</label>
+          <label class="form-label">경유지 있는 운송</label>
           <select class="form-select mb-3" name="optimize">
-            <option value="">— Select shipment —</option>
+            <option value="">— 운송 선택 —</option>
             {% for s in multi_stop %}
             <option value="{{ s.id }}" {% if selected_id == s.id %}selected{% endif %}>
-              {{ s.shipment_number }} — {{ s.stops|length }} stop(s)
+              {{ s.shipment_number }} — {{ s.stops|length }} 경유지
               ({{ s.origin_address.split(',')[0] }} → {{ s.destination_address.split(',')[0] }})
             </option>
             {% endfor %}
           </select>
           <button type="submit" class="btn btn-warning w-100">
-            <i class="fa-solid fa-bolt me-2"></i>Optimize Route
+            <i class="fa-solid fa-bolt me-2"></i>노선 최적화
           </button>
         </form>
         {% else %}
         <div class="text-center text-muted py-3">
           <i class="fa-solid fa-route fa-2x mb-2 d-block opacity-25"></i>
-          <small>No multi-stop shipments available.<br>
-          Add intermediate stops when creating a shipment.</small>
+          <small>경유지가 있는 운송이 없습니다.<br>
+          운송 등록 시 중간 경유지를 추가하세요.</small>
         </div>
         {% endif %}
       </div>
@@ -128,7 +128,7 @@
 
     <!-- Active routes legend -->
     <div class="card">
-      <div class="card-header"><h6><i class="fa-solid fa-list me-2"></i>Active Routes</h6></div>
+      <div class="card-header"><h6><i class="fa-solid fa-list me-2"></i>활성 노선</h6></div>
       <div class="card-body p-0" style="max-height:360px;overflow-y:auto;">
         {% set routes = routes_geo | from_json %}
         {% if routes %}
@@ -150,7 +150,7 @@
         </div>
         {% endfor %}
         {% else %}
-        <div class="text-center text-muted py-4 small">No active routes.</div>
+        <div class="text-center text-muted py-4 small">활성 노선이 없습니다.</div>
         {% endif %}
       </div>
     </div>
@@ -190,7 +190,7 @@ routesData.forEach(r => {
 // Show optimized route in different color
 L.polyline(optOptimized.map(s => [s.lat, s.lng]),
   { color: '#f59e0b', weight: 4, dashArray: '6 4', opacity: .9 }).addTo(map)
-  .bindTooltip('Optimized Route', { permanent: false });
+  .bindTooltip('최적화 노선', { permanent: false });
 {% endif %}
 
 if (routesData.length === 0) {

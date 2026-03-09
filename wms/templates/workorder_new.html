@@ -1,43 +1,43 @@
 {% extends "base.html" %}
-{% block title %}New Work Order{% endblock %}
-{% block page_title %}New Work Order{% endblock %}
+{% block title %}신규 작업지시{% endblock %}
+{% block page_title %}신규 작업지시{% endblock %}
 
 {% block content %}
 <div class="page-header">
-  <h1>New Work Order</h1>
-  <p>Create a pick order for outbound fulfillment</p>
+  <h1>신규 작업지시</h1>
+  <p>출고 처리를 위한 피킹 지시를 생성합니다</p>
 </div>
 
 <div class="row g-4">
   <div class="col-lg-8">
     <div class="card">
       <div class="card-header">
-        <h5><i class="fa-solid fa-plus me-2 text-primary"></i>Work Order Details</h5>
+        <h5><i class="fa-solid fa-plus me-2 text-primary"></i>작업지시 상세 정보</h5>
       </div>
       <div class="card-body">
         <form method="POST" action="{{ url_for('new_workorder') }}" id="woForm">
           <div class="row g-3 mb-4">
             <div class="col-sm-6">
-              <label class="form-label">Customer / Recipient <span class="text-danger">*</span></label>
-              <input type="text" class="form-control" name="customer" placeholder="Customer name" required>
+              <label class="form-label">고객 / 수령인 <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" name="customer" placeholder="고객 이름" required>
             </div>
             <div class="col-sm-6">
-              <label class="form-label">Priority</label>
+              <label class="form-label">우선순위</label>
               <select class="form-select" name="priority">
-                <option value="low">Low</option>
-                <option value="normal" selected>Normal</option>
-                <option value="high">High</option>
-                <option value="urgent">Urgent</option>
+                <option value="low">낮음</option>
+                <option value="normal" selected>보통</option>
+                <option value="high">높음</option>
+                <option value="urgent">긴급</option>
               </select>
             </div>
             <div class="col-12">
-              <label class="form-label">Notes</label>
-              <textarea class="form-control" name="notes" rows="2" placeholder="Special instructions..."></textarea>
+              <label class="form-label">메모</label>
+              <textarea class="form-control" name="notes" rows="2" placeholder="특별 지시사항..."></textarea>
             </div>
           </div>
 
           <h6 class="fw-700 mb-3 text-muted">
-            <i class="fa-solid fa-list-check me-2"></i>Pick Items
+            <i class="fa-solid fa-list-check me-2"></i>피킹 항목
           </h6>
 
           <div id="itemsContainer">
@@ -45,25 +45,25 @@
             <div class="pick-row mb-2" id="row-0">
               <div class="row g-2 align-items-end">
                 <div class="col-sm-6">
-                  <label class="form-label small">Product</label>
+                  <label class="form-label small">상품</label>
                   <select class="form-select form-select-sm product-select" name="product_id[]">
-                    <option value="">— Select product —</option>
+                    <option value="">— 상품 선택 —</option>
                     {% for p in products %}
                     <option value="{{ p.id }}"
                       data-stock="{{ p.current_stock() }}"
                       data-unit="{{ p.unit }}"
                       data-location="{{ p.location }}">
-                      [{{ p.sku }}] {{ p.name }} ({{ p.current_stock() }} {{ p.unit }} avail.)
+                      [{{ p.sku }}] {{ p.name }} ({{ p.current_stock() }} {{ p.unit }} 가용)
                     </option>
                     {% endfor %}
                   </select>
                 </div>
                 <div class="col-sm-3">
-                  <label class="form-label small">Quantity</label>
-                  <input type="number" class="form-control form-control-sm" name="quantity[]" min="1" placeholder="Qty">
+                  <label class="form-label small">수량</label>
+                  <input type="number" class="form-control form-control-sm" name="quantity[]" min="1" placeholder="수량">
                 </div>
                 <div class="col-sm-2">
-                  <label class="form-label small">Location</label>
+                  <label class="form-label small">위치</label>
                   <div class="location-badge mt-1 small" id="loc-0" style="min-height:32px;">—</div>
                 </div>
                 <div class="col-sm-1 d-flex align-items-end pb-1">
@@ -76,15 +76,15 @@
           </div>
 
           <button type="button" class="btn btn-outline-secondary btn-sm mt-2" id="addRowBtn">
-            <i class="fa-solid fa-plus me-1"></i>Add Another Item
+            <i class="fa-solid fa-plus me-1"></i>항목 추가
           </button>
 
           <hr class="my-4">
           <div class="d-flex gap-2">
             <button type="submit" class="btn btn-primary">
-              <i class="fa-solid fa-clipboard-check me-2"></i>Create Work Order
+              <i class="fa-solid fa-clipboard-check me-2"></i>작업지시 생성
             </button>
-            <a href="{{ url_for('workorders') }}" class="btn btn-outline-secondary">Cancel</a>
+            <a href="{{ url_for('workorders') }}" class="btn btn-outline-secondary">취소</a>
           </div>
         </form>
       </div>
@@ -93,13 +93,13 @@
 
   <div class="col-lg-4">
     <div class="card">
-      <div class="card-header"><h6><i class="fa-solid fa-circle-info me-2"></i>Tips</h6></div>
+      <div class="card-header"><h6><i class="fa-solid fa-circle-info me-2"></i>안내</h6></div>
       <div class="card-body">
         <ul class="small text-muted mb-0">
-          <li class="mb-2">Items will be sorted by <strong>warehouse location</strong> on the pick sheet to optimize the picking route.</li>
-          <li class="mb-2">Set priority to <strong>Urgent</strong> for same-day fulfillment requirements.</li>
-          <li class="mb-2">Available stock is shown next to each product name.</li>
-          <li>After creation, update pick quantities on the work order detail page.</li>
+          <li class="mb-2">피킹 목록에서 항목은 최적 피킹 경로를 위해 <strong>창고 위치</strong> 기준으로 정렬됩니다.</li>
+          <li class="mb-2">당일 처리가 필요한 경우 우선순위를 <strong>긴급</strong>으로 설정하세요.</li>
+          <li class="mb-2">각 상품명 옆에 가용 재고가 표시됩니다.</li>
+          <li>생성 후 작업지시 상세 페이지에서 피킹 수량을 업데이트할 수 있습니다.</li>
         </ul>
       </div>
     </div>

@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>{% block title %}WMS{% endblock %} — Warehouse Management System</title>
+  <title>{% block title %}WMS{% endblock %} — 창고관리시스템</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
   <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet"/>
@@ -17,46 +17,46 @@
     <span class="brand-text">LogiWMS</span>
   </div>
   <ul class="sidebar-nav">
-    <li class="nav-label">Overview</li>
+    <li class="nav-label">개요</li>
     <li>
       <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
-        <i class="fa-solid fa-gauge-high"></i><span>Dashboard</span>
+        <i class="fa-solid fa-gauge-high"></i><span>대시보드</span>
       </a>
     </li>
     <li>
       <a href="{{ url_for('inventory') }}" class="nav-link {% if request.endpoint == 'inventory' %}active{% endif %}">
-        <i class="fa-solid fa-boxes-stacked"></i><span>Inventory</span>
+        <i class="fa-solid fa-boxes-stacked"></i><span>재고</span>
       </a>
     </li>
     <li>
       <a href="{{ url_for('alerts') }}" class="nav-link {% if request.endpoint == 'alerts' %}active{% endif %}">
-        <i class="fa-solid fa-triangle-exclamation"></i><span>Alerts</span>
+        <i class="fa-solid fa-triangle-exclamation"></i><span>알림</span>
         {% set low = namespace(count=0) %}
         {% for p in [] %}{% endfor %}
       </a>
     </li>
 
-    <li class="nav-label">Operations</li>
+    <li class="nav-label">운영</li>
     <li>
       <a href="{{ url_for('inbound') }}" class="nav-link {% if request.endpoint == 'inbound' %}active{% endif %}">
-        <i class="fa-solid fa-arrow-down-to-bracket"></i><span>Inbound</span>
+        <i class="fa-solid fa-arrow-down-to-bracket"></i><span>입고</span>
       </a>
     </li>
     <li>
       <a href="{{ url_for('outbound') }}" class="nav-link {% if request.endpoint == 'outbound' %}active{% endif %}">
-        <i class="fa-solid fa-arrow-up-from-bracket"></i><span>Outbound</span>
+        <i class="fa-solid fa-arrow-up-from-bracket"></i><span>출고</span>
       </a>
     </li>
     <li>
       <a href="{{ url_for('workorders') }}" class="nav-link {% if request.endpoint in ['workorders','workorder_detail','new_workorder'] %}active{% endif %}">
-        <i class="fa-solid fa-clipboard-list"></i><span>Work Orders</span>
+        <i class="fa-solid fa-clipboard-list"></i><span>작업지시</span>
       </a>
     </li>
 
-    <li class="nav-label">Analytics</li>
+    <li class="nav-label">분석</li>
     <li>
       <a href="{{ url_for('forecast') }}" class="nav-link {% if request.endpoint == 'forecast' %}active{% endif %}">
-        <i class="fa-solid fa-chart-line"></i><span>Demand Forecast</span>
+        <i class="fa-solid fa-chart-line"></i><span>수요예측</span>
       </a>
     </li>
   </ul>
@@ -103,7 +103,7 @@
   // Clock
   function updateClock() {
     const now = new Date();
-    document.getElementById('clock').textContent = now.toLocaleString('en-US', {
+    document.getElementById('clock').textContent = now.toLocaleString('ko-KR', {
       month: 'short', day: 'numeric', year: 'numeric',
       hour: '2-digit', minute: '2-digit'
     });
