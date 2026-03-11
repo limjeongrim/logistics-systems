@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+{% block title %}바코드 스캔{% endblock %}
+{% block page_title %}바코드 스캔 시뮬레이션{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>바코드 스캔</h1>
+  <p>바코드 번호 또는 SKU를 입력하면 상품 정보가 자동으로 조회됩니다.</p>
+</div>
+
+<div class="row g-4">
+  <!-- Scanner Input -->
+  <div class="col-lg-5">
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5><i class="fa-solid fa-barcode me-2 text-primary"></i>바코드 스캔</h5>
+      </div>
+      <div class="card-body">
+        <!-- Barcode input -->
+        <div class="mb-3">
+          <label class="form-label fw-600">바코드 / SKU 입력</label>
+          <div class="input-group input-group-lg">
+            <span class="input-group-text bg-primary text-white">
+              <i class="fa-solid fa-barcode"></i>
+            </span>
+            <input type="text" id="barcodeInput" class="form-control font-monospace"
+                   placeholder="스캔 또는 직접 입력…" autocomplete="off" autofocus/>
+            <button class="btn btn-primary" id="scanBtn" type="button">조회</button>
+          </div>
+          <div class="form-text">예: <code>8801234560001</code> 또는 <code>ELEC-001</code></div>
+        </div>
+
+        <!-- Product info panel (hidden until scan) -->
+        <div id="productPanel" class="d-none">
+          <div class="alert alert-info p-3 mb-3" id="productCard">
+            <div class="d-flex gap-3 align-items-start">
+              <div class="fs-2"><i class="fa-solid fa-box-open text-primary"></i></div>
+              <div class="flex-grow-1">
+                <div id="pName" class="fw-700 fs-6"></div>
+                <div id="pSku" class="font-monospace small text-muted"></div>
+                <div class="mt-2 d-flex gap-3 flex-wrap">
+                  <span><span class="text-muted small">재고</span> <strong id="pStock"></strong></span>
+                  <span><span class="text-muted small">위치</span> <strong id="pLocation" class="font-monospace"></strong></span>
+                  <span><span class="text-muted small">카테고리</span> <strong id="pCat"></strong></span>
+                </div>
+                <div class="mt-2">
+                  <span id="pStatusBadge" class="badge"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Action form -->
+          <form method="POST" action="{{ url_for('barcode') }}" id="scanForm">
+            <input type="hidden" name="product_id" id="hiddenProductId"/>
+
+            <div class="mb-3">
+              <label class="form-label fw-600">수량</label>
+              <input type="number" name="quantity" id="quantityInput" class="form-control"
+                     min="1" value="1" required/>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-600">참조번호 (선택)</label>
+              <input type="text" name="reference" class="form-control" placeholder="예: SO-20260311-001"/>
+            </div>
+            <div class="mb-3">
+              <label class="form-label fw-600">메모 (선택)</label>
+              <input type="text" name="notes" class="form-control" placeholder="비고 사항…"/>
+            </div>
+
+            <div class="d-flex gap-2">
+              <button type="submit" name="action" value="inbound"
+                      class="btn btn-success flex-grow-1">
+                <i class="fa-solid fa-arrow-down-to-bracket me-1"></i>입고 처리
+              </button>
+              <button type="submit" name="action" value="outbound"
+                      class="btn btn-warning flex-grow-1" id="outboundBtn">
+                <i class="fa-solid fa-arrow-up-from-bracket me-1"></i>출고 처리
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Error panel -->
+        <div id="errorPanel" class="d-none">
+          <div class="alert alert-danger">
+            <i class="fa-solid fa-circle-xmark me-2"></i>
+            <span id="errorMsg"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick reference barcodes -->
+    <div class="card">
+      <div class="card-header"><h6><i class="fa-solid fa-list-ul me-2"></i>빠른 스캔 예시</h6></div>
+      <div class="card-body p-0">
+        <div class="list-group list-group-flush" id="quickList">
+          <div class="text-center text-muted py-3 small">로딩 중…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent scan history -->
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header">
+        <h5><i class="fa-solid fa-history me-2 text-primary"></i>최근 처리 내역</h5>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table mb-0">
+            <thead>
+              <tr>
+                <th>구분</th>
+                <th>상품</th>
+                <th>수량</th>
+                <th>참조</th>
+                <th>일시</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for t in recent %}
+              <tr>
+                <td>
+                  {% if t.type == 'inbound' %}
+                    <span class="badge bg-success-subtle text-success border border-success-subtle">
+                      <i class="fa-solid fa-arrow-down me-1"></i>입고
+                    </span>
+                  {% else %}
+                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle">
+                      <i class="fa-solid fa-arrow-up me-1"></i>출고
+                    </span>
+                  {% endif %}
+                </td>
+                <td>
+                  <div class="fw-500 small">{{ t.product.name }}</div>
+                  <div class="font-monospace text-muted" style="font-size:.7rem;">{{ t.product.sku }}</div>
+                </td>
+                <td class="fw-700">{{ t.quantity }} <span class="text-muted small">{{ t.product.unit }}</span></td>
+                <td class="font-monospace small text-muted">{{ t.reference or '—' }}</td>
+                <td class="small text-muted">{{ t.created_at.strftime('%m/%d %H:%M') }}</td>
+              </tr>
+              {% else %}
+              <tr><td colspan="5" class="text-center text-muted py-4">처리 내역이 없습니다.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const statusLabels = {ok:'정상', warning:'주의', low:'재고부족', out:'재고없음'};
+const statusColors = {ok:'success', warning:'warning', low:'danger', out:'secondary'};
+
+let scannedProductId = null;
+let scannedStock = 0;
+
+function lookupBarcode(code) {
+  code = code.trim();
+  if (!code) return;
+
+  fetch(`/api/product-by-barcode/${encodeURIComponent(code)}`)
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) {
+        document.getElementById('productPanel').classList.add('d-none');
+        document.getElementById('errorPanel').classList.remove('d-none');
+        document.getElementById('errorMsg').textContent = data.error;
+        return;
+      }
+      document.getElementById('errorPanel').classList.add('d-none');
+      document.getElementById('productPanel').classList.remove('d-none');
+
+      document.getElementById('pName').textContent = data.name;
+      document.getElementById('pSku').textContent = `${data.sku}  ·  ${data.barcode}`;
+      document.getElementById('pStock').textContent = `${data.stock} ${data.unit}`;
+      document.getElementById('pLocation').textContent = data.location || '—';
+      document.getElementById('pCat').textContent = data.category;
+
+      const badge = document.getElementById('pStatusBadge');
+      badge.className = `badge bg-${statusColors[data.status]}-subtle text-${statusColors[data.status]} border border-${statusColors[data.status]}-subtle`;
+      badge.textContent = statusLabels[data.status] || data.status;
+
+      document.getElementById('hiddenProductId').value = data.id;
+      document.getElementById('quantityInput').value = 1;
+
+      // Disable outbound if out of stock
+      document.getElementById('outboundBtn').disabled = data.stock <= 0;
+
+      scannedProductId = data.id;
+      scannedStock = data.stock;
+    })
+    .catch(() => {
+      document.getElementById('errorPanel').classList.remove('d-none');
+      document.getElementById('errorMsg').textContent = '서버 오류가 발생했습니다.';
+    });
+}
+
+document.getElementById('scanBtn').addEventListener('click', () => {
+  lookupBarcode(document.getElementById('barcodeInput').value);
+});
+document.getElementById('barcodeInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    lookupBarcode(document.getElementById('barcodeInput').value);
+  }
+});
+
+// Load quick reference list
+fetch('/api/products')
+  .then(r => r.json())
+  .then(products => {
+    const list = document.getElementById('quickList');
+    list.innerHTML = products.slice(0, 8).map(p => `
+      <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-2 px-3"
+              onclick="document.getElementById('barcodeInput').value='${p.sku}'; lookupBarcode('${p.sku}');">
+        <div>
+          <div class="small fw-600">${p.name}</div>
+          <div class="font-monospace" style="font-size:.65rem;color:#9ca3af;">${p.sku}</div>
+        </div>
+        <span class="badge bg-light text-dark border">${p.stock} ${p.unit}</span>
+      </button>
+    `).join('');
+  });
+</script>
+{% endblock %}

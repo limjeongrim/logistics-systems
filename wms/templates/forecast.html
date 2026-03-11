@@ -1,28 +1,28 @@
 {% extends "base.html" %}
-{% block title %}수요예측{% endblock %}
-{% block page_title %}수요 예측{% endblock %}
+{% block title %}AI 수요예측{% endblock %}
+{% block page_title %}AI 수요 예측{% endblock %}
 
 {% block content %}
 <div class="page-header">
-  <h1>수요 예측</h1>
-  <p>가중 이동 평균을 사용한 90일 과거 추세 기반 출고 수요 예측</p>
+  <h1>AI 수요 예측</h1>
+  <p>계절성 감지 · 이상값 탐지 · 신뢰구간 포함 — 26주 이력 기반 출고 수요 예측</p>
 </div>
 
-<!-- Methodology note -->
-<div class="alert alert-info mb-4">
-  <i class="fa-solid fa-circle-info me-2"></i>
-  <strong>알고리즘:</strong> 가중 이동 평균 (6주 윈도우)과 선형 추세 예측을 결합합니다.
-  최근 90일간의 출고 거래내역을 주간 단위로 집계하여
-  향후 4주간의 수요를 예측합니다.
+<!-- Algorithm info -->
+<div class="alert alert-info mb-4 py-2">
+  <i class="fa-solid fa-robot me-2"></i>
+  <strong>알고리즘:</strong>
+  가중 이동 평균(6주) + 선형 추세 + <strong>월별 계절성 지수</strong> + <strong>이상값 제거(±2σ)</strong> +
+  <strong>신뢰구간(1σ/2σ)</strong> — 향후 4주 예측 / 예측 정확도 MAPE 자동 계산
 </div>
 
 <div class="row g-4">
-  <!-- Product selector + Chart -->
-  <div class="col-lg-7">
+  <!-- Chart -->
+  <div class="col-lg-8">
     <div class="card">
       <div class="card-header">
-        <h5><i class="fa-solid fa-chart-bar me-2 text-primary"></i>수요 차트</h5>
-        <form method="GET" class="d-flex gap-2" style="min-width:260px;">
+        <h5><i class="fa-solid fa-chart-bar me-2 text-primary"></i>수요 예측 차트</h5>
+        <form method="GET" class="d-flex gap-2" style="min-width:280px;">
           <select name="product_id" class="form-select form-select-sm" onchange="this.form.submit()">
             <option value="">— 상품 선택 —</option>
             {% for p in products %}
@@ -35,54 +35,100 @@
       </div>
       <div class="card-body">
         {% if chart_data %}
-        <div class="chart-container" style="height:320px;">
+        <!-- Stats row -->
+        <div class="row g-2 mb-3">
+          <div class="col-3 text-center">
+            <div class="small text-muted">현재 재고</div>
+            <div class="fw-700">{{ selected_product.current_stock() }} {{ selected_product.unit }}</div>
+          </div>
+          <div class="col-3 text-center">
+            <div class="small text-muted">주간 평균 수요</div>
+            <div class="fw-700">{{ enhanced.mean }}</div>
+          </div>
+          <div class="col-3 text-center">
+            <div class="small text-muted">표준편차 (σ)</div>
+            <div class="fw-700">{{ enhanced.std }}</div>
+          </div>
+          <div class="col-3 text-center">
+            <div class="small text-muted">예측 정확도</div>
+            <div class="fw-700 {% if enhanced.accuracy and enhanced.accuracy >= 80 %}text-success{% elif enhanced.accuracy and enhanced.accuracy >= 60 %}text-warning{% else %}text-muted{% endif %}">
+              {% if enhanced.accuracy is not none %}{{ enhanced.accuracy }}%{% else %}—{% endif %}
+            </div>
+          </div>
+        </div>
+
+        <div class="chart-container" style="height:340px;">
           <canvas id="forecastChart"></canvas>
         </div>
-        <div class="row g-3 mt-2">
-          <div class="col-4 text-center">
-            <div class="small text-muted">상품</div>
-            <div class="fw-600">{{ selected_product.name }}</div>
-          </div>
-          <div class="col-4 text-center">
-            <div class="small text-muted">현재 재고</div>
-            <div class="fw-600">{{ selected_product.current_stock() }} {{ selected_product.unit }}</div>
-          </div>
-          <div class="col-4 text-center">
-            <div class="small text-muted">재주문점</div>
-            <div class="fw-600">{{ selected_product.reorder_point }} {{ selected_product.unit }}</div>
-          </div>
+
+        <!-- Anomaly alert -->
+        {% if enhanced.anomaly_indices %}
+        <div class="alert alert-warning mt-3 py-2 mb-0">
+          <i class="fa-solid fa-triangle-exclamation me-2"></i>
+          <strong>이상값 감지:</strong>
+          최근 13주 이력 중 {{ enhanced.anomaly_indices|length }}개 주간에 비정상적인 수요가 감지되었습니다.
+          차트에서 ⚠ 표시로 확인하세요.
         </div>
+        {% endif %}
+
         {% else %}
         <div class="text-center py-5 text-muted">
           <i class="fa-solid fa-chart-bar fa-3x mb-3 d-block opacity-25"></i>
-          드롭다운에서 상품을 선택하면 수요 예측 차트를 확인할 수 있습니다.
+          상품을 선택하면 AI 수요 예측 차트를 확인할 수 있습니다.
         </div>
         {% endif %}
       </div>
     </div>
+
+    <!-- Seasonality chart -->
+    {% if chart_data %}
+    <div class="card mt-4">
+      <div class="card-header">
+        <h6><i class="fa-solid fa-calendar-days me-2 text-warning"></i>월별 계절성 지수</h6>
+      </div>
+      <div class="card-body">
+        <div class="chart-container" style="height:160px;">
+          <canvas id="seasonChart"></canvas>
+        </div>
+        <div class="small text-muted mt-2">
+          1.0 = 평균 수준 &nbsp;·&nbsp; 1.0 초과 = 평균 이상 수요 &nbsp;·&nbsp; 1.0 미만 = 평균 이하 수요
+        </div>
+      </div>
+    </div>
+    {% endif %}
   </div>
 
-  <!-- Legend / explanation -->
-  <div class="col-lg-5">
+  <!-- Right panel -->
+  <div class="col-lg-4">
+    <!-- Legend -->
     <div class="card mb-3">
       <div class="card-header"><h6><i class="fa-solid fa-circle-info me-2"></i>차트 읽는 방법</h6></div>
       <div class="card-body">
         <div class="d-flex align-items-center gap-2 mb-2">
-          <div style="width:16px;height:16px;background:#3b82f6;border-radius:3px;"></div>
-          <div class="small"><strong>과거 실적 (막대)</strong> — 주간 실제 출고 수요</div>
+          <div style="width:16px;height:16px;background:rgba(59,130,246,.7);border-radius:3px;"></div>
+          <div class="small"><strong>과거 수요 (막대)</strong> — 실제 주간 출고 수량</div>
         </div>
         <div class="d-flex align-items-center gap-2 mb-2">
-          <div style="width:16px;height:16px;background:rgba(245,158,11,.5);border:2px dashed #f59e0b;border-radius:3px;"></div>
-          <div class="small"><strong>예측 (막대)</strong> — 향후 4주 예상 수요</div>
+          <div style="width:16px;height:16px;background:rgba(245,158,11,.5);border-radius:3px;"></div>
+          <div class="small"><strong>예측 수요 (막대)</strong> — 향후 4주 예상 수요</div>
+        </div>
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <div style="width:16px;height:3px;background:rgba(34,197,94,.6);border-radius:3px;"></div>
+          <div class="small"><strong>신뢰구간 1σ</strong> — 68% 예측 범위</div>
+        </div>
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <div style="width:16px;height:3px;background:rgba(34,197,94,.25);border-radius:3px;"></div>
+          <div class="small"><strong>신뢰구간 2σ</strong> — 95% 예측 범위</div>
         </div>
         <div class="d-flex align-items-center gap-2">
-          <div style="width:16px;height:3px;background:#ef4444;border-radius:3px;"></div>
-          <div class="small"><strong>재주문선</strong> — 재고가 이 수준으로 떨어지면 재입고 필요</div>
+          <span style="font-size:.9rem;">⚠</span>
+          <div class="small"><strong>이상값</strong> — 평균 ±2σ 초과 주간</div>
         </div>
       </div>
     </div>
 
-    <div class="card">
+    <!-- Restock recommendations -->
+    <div class="card mb-3">
       <div class="card-header"><h6><i class="fa-solid fa-lightbulb me-2 text-warning"></i>재입고 권고</h6></div>
       <div class="card-body p-0">
         {% set alerts_shown = namespace(count=0) %}
@@ -91,24 +137,50 @@
           {% set alerts_shown.count = alerts_shown.count + 1 %}
           <div class="d-flex align-items-center gap-3 px-3 py-2" style="border-bottom:1px solid #f1f5f9;">
             <i class="fa-solid fa-triangle-exclamation text-warning flex-shrink-0"></i>
-            <div>
+            <div class="flex-grow-1">
               <div class="small fw-600">{{ row.product.name }}</div>
               <div class="text-muted" style="font-size:.75rem;">
-                예측: <strong>{{ row.four_week }}</strong> 단위/4주 &mdash;
-                재고: <strong>{{ row.stock }}</strong>
+                예측: <strong>{{ row.four_week }}</strong> / 재고: <strong>{{ row.stock }}</strong>
               </div>
             </div>
+            <form method="POST" action="{{ url_for('auto_purchase_order') }}">
+              <input type="hidden" name="product_id" value="{{ row.product.id }}"/>
+              <button class="btn btn-xs btn-outline-primary" title="자동 발주"
+                      style="font-size:.7rem; padding:2px 8px;">
+                자동발주
+              </button>
+            </form>
           </div>
           {% endif %}
         {% endfor %}
         {% if alerts_shown.count == 0 %}
         <div class="text-center text-muted py-3 small">
           <i class="fa-solid fa-circle-check text-success me-1"></i>
-          모든 상품의 재고가 예측 수요를 충족합니다.
+          모든 상품 재고가 예측 수요를 충족합니다.
         </div>
         {% endif %}
       </div>
     </div>
+
+    <!-- Forecast accuracy card -->
+    {% if enhanced and enhanced.accuracy is not none %}
+    <div class="card">
+      <div class="card-header"><h6><i class="fa-solid fa-bullseye me-2"></i>예측 정확도 (MAPE)</h6></div>
+      <div class="card-body text-center">
+        {% set acc = enhanced.accuracy %}
+        {% set acc_color = 'success' if acc >= 80 else 'warning' if acc >= 60 else 'danger' %}
+        <div class="fw-700 text-{{ acc_color }}" style="font-size:2.5rem;">{{ acc }}%</div>
+        <div class="small text-muted mb-2">
+          {% if acc >= 80 %}우수 — 예측이 실제 수요와 잘 일치합니다
+          {% elif acc >= 60 %}보통 — 예측 개선 여지가 있습니다
+          {% else %}미흡 — 수요 변동성이 높습니다{% endif %}
+        </div>
+        <div class="progress" style="height:10px;">
+          <div class="progress-bar bg-{{ acc_color }}" style="width:{{ acc }}%;"></div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
   </div>
 </div>
 
@@ -154,17 +226,13 @@
               {% if row.next_week > 0 %}
                 <span class="fw-600">{{ row.next_week }}</span>
                 <span class="text-muted small">{{ row.product.unit }}</span>
-              {% else %}
-                <span class="text-muted">—</span>
-              {% endif %}
+              {% else %}<span class="text-muted">—</span>{% endif %}
             </td>
             <td>
               {% if row.four_week > 0 %}
                 <span class="fw-600">{{ row.four_week }}</span>
                 <span class="text-muted small">{{ row.product.unit }}</span>
-              {% else %}
-                <span class="text-muted">—</span>
-              {% endif %}
+              {% else %}<span class="text-muted">—</span>{% endif %}
             </td>
             <td>
               {% if row.four_week > 0 %}
@@ -172,16 +240,14 @@
                 <span class="badge {% if coverage_weeks < 1 %}bg-danger-subtle text-danger{% elif coverage_weeks < 2 %}bg-warning-subtle text-warning{% else %}bg-success-subtle text-success{% endif %}">
                   ~{{ coverage_weeks }}주
                 </span>
-              {% else %}
-                <span class="text-muted small">해당없음</span>
-              {% endif %}
+              {% else %}<span class="text-muted small">해당없음</span>{% endif %}
             </td>
             <td>
               {% if row.four_week == 0 %}
                 <span class="text-muted small">수요 없음</span>
               {% elif not stock_ok %}
                 <span class="badge bg-danger-subtle text-danger">
-                  <i class="fa-solid fa-circle-arrow-up me-1"></i>재입고: +{{ (row.four_week - row.stock)|int }}
+                  <i class="fa-solid fa-circle-arrow-up me-1"></i>재입고 +{{ (row.four_week - row.stock)|int }}
                 </span>
               {% elif row.stock < row.four_week * 1.5 %}
                 <span class="badge bg-warning-subtle text-warning">
@@ -206,12 +272,26 @@
 {% if chart_data %}
 <script>
 const cd = {{ chart_data | safe }};
-const ctx = document.getElementById('forecastChart').getContext('2d');
 
+// ── Main forecast chart ────────────────────────
 const allLabels  = cd.hist_labels.concat(cd.fcast_labels);
-const histValues = cd.hist_values.concat(Array(cd.fcast_values.length).fill(null));
-const fcastValues = Array(cd.hist_values.length).fill(null).concat(cd.fcast_values);
+const hLen = cd.hist_values.length;
+const fLen = cd.fcast_values.length;
 
+const histVals  = cd.hist_values.concat(Array(fLen).fill(null));
+const fcastVals = Array(hLen).fill(null).concat(cd.fcast_values);
+
+// Confidence bands (only over forecast region)
+const up1  = Array(hLen).fill(null).concat(cd.upper_1);
+const lo1  = Array(hLen).fill(null).concat(cd.lower_1);
+const up2  = Array(hLen).fill(null).concat(cd.upper_2);
+const lo2  = Array(hLen).fill(null).concat(cd.lower_2);
+
+// Mark anomaly points in history
+const anomalyPoints = Array(hLen + fLen).fill(null);
+cd.anomaly_indices.forEach(i => { anomalyPoints[i] = cd.hist_values[i]; });
+
+const ctx = document.getElementById('forecastChart').getContext('2d');
 new Chart(ctx, {
   type: 'bar',
   data: {
@@ -219,46 +299,120 @@ new Chart(ctx, {
     datasets: [
       {
         label: '과거 수요',
-        data: histValues,
-        backgroundColor: 'rgba(59,130,246,.7)',
-        borderColor: '#3b82f6',
-        borderWidth: 1,
-        borderRadius: 4,
+        data: histVals,
+        backgroundColor: ctx => {
+          const i = ctx.dataIndex;
+          return cd.anomaly_indices.includes(i) ? 'rgba(239,68,68,.7)' : 'rgba(59,130,246,.7)';
+        },
+        borderColor: ctx => {
+          const i = ctx.dataIndex;
+          return cd.anomaly_indices.includes(i) ? '#ef4444' : '#3b82f6';
+        },
+        borderWidth: 1, borderRadius: 4, order: 2,
       },
       {
         label: '예측 수요',
-        data: fcastValues,
-        backgroundColor: 'rgba(245,158,11,.45)',
-        borderColor: '#f59e0b',
-        borderWidth: 2,
-        borderDash: [4, 4],
-        borderRadius: 4,
-      }
+        data: fcastVals,
+        backgroundColor: 'rgba(245,158,11,.5)',
+        borderColor: '#f59e0b', borderWidth: 2, borderRadius: 4, order: 2,
+      },
+      {
+        label: '신뢰구간 1σ (상한)',
+        data: up1, type: 'line',
+        borderColor: 'rgba(34,197,94,.8)', backgroundColor: 'transparent',
+        borderWidth: 1.5, borderDash: [4,3], pointRadius: 0, tension: 0.3, order: 1,
+      },
+      {
+        label: '신뢰구간 1σ (하한)',
+        data: lo1, type: 'line',
+        borderColor: 'rgba(34,197,94,.8)', backgroundColor: 'rgba(34,197,94,.12)',
+        borderWidth: 1.5, borderDash: [4,3], pointRadius: 0, tension: 0.3,
+        fill: '-1', order: 1,
+      },
+      {
+        label: '신뢰구간 2σ (상한)',
+        data: up2, type: 'line',
+        borderColor: 'rgba(34,197,94,.4)', backgroundColor: 'transparent',
+        borderWidth: 1, borderDash: [2,4], pointRadius: 0, tension: 0.3, order: 1,
+      },
+      {
+        label: '신뢰구간 2σ (하한)',
+        data: lo2, type: 'line',
+        borderColor: 'rgba(34,197,94,.4)', backgroundColor: 'rgba(34,197,94,.06)',
+        borderWidth: 1, borderDash: [2,4], pointRadius: 0, tension: 0.3,
+        fill: '-1', order: 1,
+      },
     ]
   },
   options: {
     responsive: true, maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
     plugins: {
-      legend: { position: 'top' },
+      legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } },
       tooltip: {
         callbacks: {
-          afterTitle: function(items) {
-            const idx = items[0].dataIndex;
-            return idx >= cd.hist_values.length ? '(예측)' : '(과거 실적)';
+          afterTitle: items => items[0].dataIndex >= hLen ? '(예측)' : '(과거 실적)',
+          label: item => {
+            const label = item.dataset.label;
+            const val = item.raw;
+            if (val === null) return null;
+            if (label.includes('신뢰구간')) return `  ${label}: ${val}`;
+            return `  ${label}: ${val}`;
           }
         }
       }
     },
     scales: {
-      x: {
-        grid: { display: false },
-        ticks: { font: { size: 11 } }
-      },
+      x: { grid: { display: false }, ticks: { font: { size: 10 } } },
       y: {
-        beginAtZero: true,
-        grid: { color: '#f1f5f9' },
+        beginAtZero: true, grid: { color: '#f1f5f9' },
         ticks: { font: { size: 11 } },
         title: { display: true, text: '수량', font: { size: 11 } }
+      }
+    }
+  }
+});
+
+// ── Seasonality bar chart ──────────────────────
+const months = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+const sCtx = document.getElementById('seasonChart').getContext('2d');
+new Chart(sCtx, {
+  type: 'bar',
+  data: {
+    labels: months,
+    datasets: [{
+      label: '계절성 지수',
+      data: cd.seasonality,
+      backgroundColor: cd.seasonality.map(v =>
+        v > 1.1 ? 'rgba(245,158,11,.7)' : v < 0.9 ? 'rgba(59,130,246,.5)' : 'rgba(34,197,94,.6)'
+      ),
+      borderColor: cd.seasonality.map(v =>
+        v > 1.1 ? '#f59e0b' : v < 0.9 ? '#3b82f6' : '#22c55e'
+      ),
+      borderWidth: 1, borderRadius: 3,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: item => {
+            const v = item.raw;
+            const diff = ((v - 1) * 100).toFixed(0);
+            return `계절 지수: ${v.toFixed(2)} (평균 대비 ${diff > 0 ? '+' : ''}${diff}%)`;
+          }
+        }
+      }
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+      y: {
+        beginAtZero: false,
+        suggestedMin: 0.5, suggestedMax: 1.5,
+        grid: { color: ctx => Math.abs(ctx.tick.value - 1) < 0.001 ? '#ef4444' : '#f1f5f9' },
+        ticks: { font: { size: 10 } }
       }
     }
   }

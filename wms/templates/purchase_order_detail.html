@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% block title %}{{ po.order_number }}{% endblock %}
+{% block page_title %}발주서 상세{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-start">
+  <div>
+    <h1 class="font-monospace">{{ po.order_number }}</h1>
+    <p class="text-muted">
+      공급업체: <strong>{{ po.supplier.name }}</strong> &nbsp;·&nbsp;
+      <span class="badge bg-{{ po.status|po_status_badge }}-subtle text-{{ po.status|po_status_badge }} border border-{{ po.status|po_status_badge }}-subtle">
+        {{ po.status|po_status_label }}
+      </span>
+      {% if po.auto_generated %}
+        <span class="badge bg-info-subtle text-info border border-info-subtle ms-1">자동발주</span>
+      {% endif %}
+    </p>
+  </div>
+  <a href="{{ url_for('purchase_orders') }}" class="btn btn-outline-secondary">← 목록</a>
+</div>
+
+<div class="row g-4">
+  <!-- Left: Info + Actions -->
+  <div class="col-lg-4">
+    <!-- Timeline / Status -->
+    <div class="card mb-3">
+      <div class="card-header"><h6><i class="fa-solid fa-timeline me-2"></i>처리 현황</h6></div>
+      <div class="card-body">
+        {% set steps = [('draft','초안 작성'), ('sent','발주 전송'), ('confirmed','공급업체 확인'), ('received','입고 완료')] %}
+        {% set status_order = {'draft':0, 'sent':1, 'confirmed':2, 'received':3, 'cancelled':-1} %}
+        {% set current_idx = status_order.get(po.status, 0) %}
+        <div class="d-flex flex-column gap-2">
+          {% for s, label in steps %}
+          {% set s_idx = loop.index0 %}
+          <div class="d-flex align-items-center gap-2">
+            <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                 style="width:28px;height:28px;
+                 background:{% if s_idx < current_idx %}#22c55e{% elif s_idx == current_idx %}#3b82f6{% else %}#e5e7eb{% endif %};
+                 color:{% if s_idx <= current_idx %}#fff{% else %}#9ca3af{% endif %};">
+              {% if s_idx < current_idx %}
+                <i class="fa-solid fa-check" style="font-size:.7rem;"></i>
+              {% elif s_idx == current_idx %}
+                <i class="fa-solid fa-circle-dot" style="font-size:.7rem;"></i>
+              {% else %}
+                <i class="fa-solid fa-circle" style="font-size:.4rem;"></i>
+              {% endif %}
+            </div>
+            <span class="small {% if s_idx == current_idx %}fw-700{% elif s_idx < current_idx %}text-success{% else %}text-muted{% endif %}">{{ label }}</span>
+          </div>
+          {% endfor %}
+          {% if po.status == 'cancelled' %}
+          <div class="d-flex align-items-center gap-2">
+            <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 bg-danger"
+                 style="width:28px;height:28px;color:#fff;">
+              <i class="fa-solid fa-xmark" style="font-size:.7rem;"></i>
+            </div>
+            <span class="small fw-700 text-danger">취소됨</span>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Dates -->
+    <div class="card mb-3">
+      <div class="card-header"><h6><i class="fa-solid fa-calendar me-2"></i>일정</h6></div>
+      <div class="card-body">
+        <dl class="mb-0">
+          <dt class="text-muted small">발주일</dt>
+          <dd class="mb-2">{{ po.created_at.strftime('%Y년 %m월 %d일') }}</dd>
+          <dt class="text-muted small">납기 예정일</dt>
+          <dd class="mb-2">{{ po.expected_date.strftime('%Y년 %m월 %d일') if po.expected_date else '—' }}</dd>
+          <dt class="text-muted small">실제 입고일</dt>
+          <dd class="mb-2 {% if po.received_date %}text-success fw-600{% else %}text-muted{% endif %}">
+            {{ po.received_date.strftime('%Y년 %m월 %d일') if po.received_date else '미입고' }}
+          </dd>
+          <dt class="text-muted small">총 발주금액</dt>
+          <dd class="mb-0 fw-700 fs-5">₩{{ po.total_value()|comma }}</dd>
+        </dl>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    {% if po.status not in ['received', 'cancelled'] %}
+    <div class="card mb-3">
+      <div class="card-header"><h6><i class="fa-solid fa-gear me-2"></i>처리</h6></div>
+      <div class="card-body d-flex flex-column gap-2">
+        <form method="POST" action="{{ url_for('update_purchase_order', po_id=po.id) }}">
+          {% if po.status == 'draft' %}
+          <button name="action" value="send" class="btn btn-primary w-100">
+            <i class="fa-solid fa-paper-plane me-1"></i>발주 전송
+          </button>
+          {% elif po.status == 'sent' %}
+          <button name="action" value="confirm" class="btn btn-info w-100 text-white">
+            <i class="fa-solid fa-circle-check me-1"></i>공급업체 확인
+          </button>
+          {% elif po.status == 'confirmed' %}
+          <button name="action" value="receive" class="btn btn-success w-100">
+            <i class="fa-solid fa-truck-ramp-box me-1"></i>입고 처리 (재고 자동 반영)
+          </button>
+          {% endif %}
+          <button name="action" value="cancel" class="btn btn-outline-danger w-100"
+                  onclick="return confirm('발주서를 취소하시겠습니까?')">
+            <i class="fa-solid fa-ban me-1"></i>취소
+          </button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if po.notes %}
+    <div class="card">
+      <div class="card-header"><h6><i class="fa-solid fa-note-sticky me-2"></i>메모</h6></div>
+      <div class="card-body small text-muted">{{ po.notes }}</div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Right: Items -->
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5><i class="fa-solid fa-boxes-stacked me-2 text-primary"></i>발주 품목</h5>
+        <span class="badge bg-light text-dark border">{{ po.items|length }}건 / 합계 {{ po.total_qty() }}개</span>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table mb-0">
+            <thead>
+              <tr>
+                <th>상품</th>
+                <th>위치</th>
+                <th>현재 재고</th>
+                <th>발주 수량</th>
+                {% if po.status == 'received' %}<th>입고 수량</th>{% endif %}
+                <th>단가</th>
+                <th>금액</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in po.items %}
+              <tr>
+                <td>
+                  <div class="fw-600 small">{{ item.product.name }}</div>
+                  <div class="font-monospace text-muted" style="font-size:.7rem;">{{ item.product.sku }}</div>
+                </td>
+                <td class="font-monospace small text-muted">{{ item.product.location or '—' }}</td>
+                <td>
+                  <span class="badge {% if item.product.stock_status() == 'ok' %}bg-success-subtle text-success{% elif item.product.stock_status() == 'warning' %}bg-warning-subtle text-warning{% else %}bg-danger-subtle text-danger{% endif %}">
+                    {{ item.product.current_stock() }} {{ item.product.unit }}
+                  </span>
+                </td>
+                <td class="fw-700">{{ item.quantity_ordered }}</td>
+                {% if po.status == 'received' %}
+                <td class="text-success fw-600">{{ item.quantity_received }}</td>
+                {% endif %}
+                <td class="small text-muted">₩{{ item.unit_price|comma }}</td>
+                <td class="fw-600">₩{{ (item.quantity_ordered * item.unit_price)|comma }}</td>
+              </tr>
+              {% else %}
+              <tr><td colspan="7" class="text-center text-muted py-4">품목이 없습니다.</td></tr>
+              {% endfor %}
+            </tbody>
+            {% if po.items %}
+            <tfoot class="table-light">
+              <tr>
+                <td colspan="{% if po.status == 'received' %}5{% else %}4{% endif %}" class="text-end fw-600">합계</td>
+                <td class="fw-700 fs-6">₩{{ po.total_value()|comma }}</td>
+              </tr>
+            </tfoot>
+            {% endif %}
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -24,6 +24,11 @@
       </a>
     </li>
     <li>
+      <a href="{{ url_for('warehouse_map') }}" class="nav-link {% if request.endpoint == 'warehouse_map' %}active{% endif %}">
+        <i class="fa-solid fa-map"></i><span>창고 맵</span>
+      </a>
+    </li>
+    <li>
       <a href="{{ url_for('inventory') }}" class="nav-link {% if request.endpoint == 'inventory' %}active{% endif %}">
         <i class="fa-solid fa-boxes-stacked"></i><span>재고</span>
       </a>
@@ -31,12 +36,15 @@
     <li>
       <a href="{{ url_for('alerts') }}" class="nav-link {% if request.endpoint == 'alerts' %}active{% endif %}">
         <i class="fa-solid fa-triangle-exclamation"></i><span>알림</span>
-        {% set low = namespace(count=0) %}
-        {% for p in [] %}{% endfor %}
       </a>
     </li>
 
     <li class="nav-label">운영</li>
+    <li>
+      <a href="{{ url_for('barcode') }}" class="nav-link {% if request.endpoint == 'barcode' %}active{% endif %}">
+        <i class="fa-solid fa-barcode"></i><span>바코드 스캔</span>
+      </a>
+    </li>
     <li>
       <a href="{{ url_for('inbound') }}" class="nav-link {% if request.endpoint == 'inbound' %}active{% endif %}">
         <i class="fa-solid fa-arrow-down-to-bracket"></i><span>입고</span>
@@ -53,15 +61,27 @@
       </a>
     </li>
 
+    <li class="nav-label">구매·공급</li>
+    <li>
+      <a href="{{ url_for('suppliers') }}" class="nav-link {% if request.endpoint in ['suppliers','supplier_detail','new_supplier'] %}active{% endif %}">
+        <i class="fa-solid fa-truck"></i><span>공급업체</span>
+      </a>
+    </li>
+    <li>
+      <a href="{{ url_for('purchase_orders') }}" class="nav-link {% if request.endpoint in ['purchase_orders','purchase_order_detail','new_purchase_order'] %}active{% endif %}">
+        <i class="fa-solid fa-file-invoice"></i><span>발주 관리</span>
+      </a>
+    </li>
+
     <li class="nav-label">분석</li>
     <li>
       <a href="{{ url_for('forecast') }}" class="nav-link {% if request.endpoint == 'forecast' %}active{% endif %}">
-        <i class="fa-solid fa-chart-line"></i><span>수요예측</span>
+        <i class="fa-solid fa-chart-line"></i><span>AI 수요예측</span>
       </a>
     </li>
   </ul>
   <div class="sidebar-footer">
-    <small class="text-muted">v1.0 &mdash; LogiWMS</small>
+    <small class="text-muted">v2.0 &mdash; LogiWMS</small>
   </div>
 </nav>
 
@@ -100,7 +120,6 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
-  // Clock
   function updateClock() {
     const now = new Date();
     document.getElementById('clock').textContent = now.toLocaleString('ko-KR', {
@@ -111,7 +130,6 @@
   updateClock();
   setInterval(updateClock, 60000);
 
-  // Sidebar toggle
   document.getElementById('sidebarToggle').addEventListener('click', function () {
     document.getElementById('sidebar').classList.toggle('collapsed');
     document.querySelector('.main-wrapper').classList.toggle('expanded');

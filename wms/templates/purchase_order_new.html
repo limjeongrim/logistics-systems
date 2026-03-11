@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+{% block title %}발주서 작성{% endblock %}
+{% block page_title %}발주서 작성{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>발주서 작성</h1>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-lg-9">
+    <form method="POST" id="poForm">
+      <div class="card mb-3">
+        <div class="card-header"><h6><i class="fa-solid fa-truck me-2"></i>공급업체 및 납기 정보</h6></div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label fw-600">공급업체 <span class="text-danger">*</span></label>
+              <select name="supplier_id" class="form-select" id="supplierSelect" required>
+                <option value="">— 선택 —</option>
+                {% for s in suppliers %}
+                <option value="{{ s.id }}" data-lead="{{ s.lead_time_days }}">{{ s.name }} (납기 {{ s.lead_time_days }}일)</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-600">납기 소요일</label>
+              <input type="number" name="lead_days" id="leadDays" class="form-control" value="7" min="1" max="90"/>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-600">예상 납기일</label>
+              <input type="text" id="expectedDate" class="form-control bg-light" readonly/>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-600">메모</label>
+              <input type="text" name="notes" class="form-control" placeholder="특이사항, 납품 장소 등…"/>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h6 class="mb-0"><i class="fa-solid fa-boxes-stacked me-2"></i>발주 품목</h6>
+          <button type="button" class="btn btn-sm btn-outline-primary" id="addRow">
+            <i class="fa-solid fa-plus me-1"></i>품목 추가
+          </button>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table mb-0" id="itemsTable">
+              <thead>
+                <tr>
+                  <th style="width:38%">상품</th>
+                  <th style="width:12%">현재 재고</th>
+                  <th style="width:15%">발주 수량</th>
+                  <th style="width:18%">단가 (₩)</th>
+                  <th style="width:14%">금액</th>
+                  <th style="width:3%"></th>
+                </tr>
+              </thead>
+              <tbody id="itemsBody">
+                <tr id="row-0" class="item-row">
+                  <td>
+                    <select name="product_id[]" class="form-select form-select-sm product-select" onchange="updateRow(0)">
+                      <option value="">— 상품 선택 —</option>
+                      {% for p in products %}
+                      <option value="{{ p.id }}"
+                              data-stock="{{ p.current_stock() }}"
+                              data-price="{{ p.unit_price }}"
+                              data-unit="{{ p.unit }}">
+                        {{ p.name }} ({{ p.sku }})
+                      </option>
+                      {% endfor %}
+                    </select>
+                  </td>
+                  <td><span class="stock-display small text-muted" id="stock-0">—</span></td>
+                  <td>
+                    <input type="number" name="quantity[]" class="form-control form-control-sm qty-input"
+                           id="qty-0" min="1" value="" onchange="calcRow(0)"/>
+                  </td>
+                  <td>
+                    <input type="number" name="unit_price[]" class="form-control form-control-sm price-input"
+                           id="price-0" min="0" value="" onchange="calcRow(0)"/>
+                  </td>
+                  <td><span class="fw-600 small" id="total-0">—</span></td>
+                  <td>
+                    <button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="removeRow(0)">
+                      <i class="fa-solid fa-xmark"></i>
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr class="table-light">
+                  <td colspan="4" class="text-end fw-600">합계</td>
+                  <td><span id="grandTotal" class="fw-700">₩0</span></td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">
+          <i class="fa-solid fa-file-invoice me-1"></i>발주서 생성
+        </button>
+        <a href="{{ url_for('purchase_orders') }}" class="btn btn-outline-secondary">취소</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Build product data map from select options
+const productData = {};
+document.querySelectorAll('.product-select option[value]').forEach(opt => {
+  if (opt.value) {
+    productData[opt.value] = {
+      stock: parseInt(opt.dataset.stock) || 0,
+      price: parseInt(opt.dataset.price) || 0,
+      unit: opt.dataset.unit || 'EA',
+    };
+  }
+});
+
+let rowCount = 1;
+
+function updateRow(idx) {
+  const sel = document.querySelector(`#row-${idx} .product-select`);
+  const pid = sel.value;
+  if (!pid) return;
+  const d = productData[pid];
+  if (!d) return;
+  document.getElementById(`stock-${idx}`).textContent = `${d.stock} ${d.unit}`;
+  document.getElementById(`price-${idx}`).value = d.price;
+  calcRow(idx);
+}
+
+function calcRow(idx) {
+  const qty   = parseInt(document.getElementById(`qty-${idx}`)?.value) || 0;
+  const price = parseInt(document.getElementById(`price-${idx}`)?.value) || 0;
+  const total = qty * price;
+  const el = document.getElementById(`total-${idx}`);
+  if (el) el.textContent = total > 0 ? `₩${total.toLocaleString('ko-KR')}` : '—';
+  calcGrand();
+}
+
+function calcGrand() {
+  let grand = 0;
+  document.querySelectorAll('.item-row').forEach(row => {
+    const idx = row.id.split('-')[1];
+    const qty   = parseInt(document.getElementById(`qty-${idx}`)?.value) || 0;
+    const price = parseInt(document.getElementById(`price-${idx}`)?.value) || 0;
+    grand += qty * price;
+  });
+  document.getElementById('grandTotal').textContent = `₩${grand.toLocaleString('ko-KR')}`;
+}
+
+function removeRow(idx) {
+  const rows = document.querySelectorAll('.item-row');
+  if (rows.length <= 1) return;
+  document.getElementById(`row-${idx}`)?.remove();
+  calcGrand();
+}
+
+document.getElementById('addRow').addEventListener('click', () => {
+  const idx = rowCount++;
+  const firstSelect = document.querySelector('.product-select');
+  const optionsHTML = firstSelect.innerHTML;
+  const tr = document.createElement('tr');
+  tr.id = `row-${idx}`;
+  tr.className = 'item-row';
+  tr.innerHTML = `
+    <td><select name="product_id[]" class="form-select form-select-sm product-select" onchange="updateRow(${idx})">${optionsHTML}</select></td>
+    <td><span class="stock-display small text-muted" id="stock-${idx}">—</span></td>
+    <td><input type="number" name="quantity[]" class="form-control form-control-sm qty-input" id="qty-${idx}" min="1" value="" onchange="calcRow(${idx})"/></td>
+    <td><input type="number" name="unit_price[]" class="form-control form-control-sm price-input" id="price-${idx}" min="0" value="" onchange="calcRow(${idx})"/></td>
+    <td><span class="fw-600 small" id="total-${idx}">—</span></td>
+    <td><button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="removeRow(${idx})"><i class="fa-solid fa-xmark"></i></button></td>
+  `;
+  document.getElementById('itemsBody').appendChild(tr);
+  // Attach productData to new selects
+  tr.querySelector('.product-select').querySelectorAll('option[value]').forEach(opt => {
+    if (opt.value && !productData[opt.value]) {
+      productData[opt.value] = {
+        stock: parseInt(opt.dataset.stock) || 0,
+        price: parseInt(opt.dataset.price) || 0,
+        unit: opt.dataset.unit || 'EA',
+      };
+    }
+  });
+});
+
+// Supplier select → auto-fill lead days
+document.getElementById('supplierSelect').addEventListener('change', function() {
+  const opt = this.options[this.selectedIndex];
+  const lead = opt.dataset.lead;
+  if (lead) {
+    document.getElementById('leadDays').value = lead;
+    updateExpectedDate();
+  }
+});
+
+function updateExpectedDate() {
+  const days = parseInt(document.getElementById('leadDays').value) || 0;
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  document.getElementById('expectedDate').value = d.toLocaleDateString('ko-KR');
+}
+document.getElementById('leadDays').addEventListener('input', updateExpectedDate);
+updateExpectedDate();
+</script>
+{% endblock %}

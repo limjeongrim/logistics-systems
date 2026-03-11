@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+{% block title %}창고 맵{% endblock %}
+{% block page_title %}2D 창고 맵{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>창고 구역 맵</h1>
+  <p>전체 창고 위치 현황 — 셀 클릭 시 상품 상세 정보를 확인할 수 있습니다.</p>
+</div>
+
+<!-- Legend + Stats -->
+<div class="row g-3 mb-4">
+  <div class="col-auto">
+    <div class="card px-3 py-2">
+      <div class="d-flex align-items-center gap-3 flex-wrap">
+        <span class="fw-600 text-muted small me-1">범례:</span>
+        <span class="d-flex align-items-center gap-1"><span class="map-dot map-ok"></span><span class="small">정상</span></span>
+        <span class="d-flex align-items-center gap-1"><span class="map-dot map-warning"></span><span class="small">주의</span></span>
+        <span class="d-flex align-items-center gap-1"><span class="map-dot map-low"></span><span class="small">부족</span></span>
+        <span class="d-flex align-items-center gap-1"><span class="map-dot map-out"></span><span class="small">재고없음</span></span>
+        <span class="d-flex align-items-center gap-1"><span class="map-dot map-empty"></span><span class="small">미사용</span></span>
+      </div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="row g-2">
+      <div class="col-auto"><div class="card px-3 py-2 text-center"><div class="small text-muted">정상</div><div class="fw-700 text-success">{{ stats.ok }}</div></div></div>
+      <div class="col-auto"><div class="card px-3 py-2 text-center"><div class="small text-muted">주의</div><div class="fw-700 text-warning">{{ stats.warning }}</div></div></div>
+      <div class="col-auto"><div class="card px-3 py-2 text-center"><div class="small text-muted">부족</div><div class="fw-700 text-danger">{{ stats.low }}</div></div></div>
+      <div class="col-auto"><div class="card px-3 py-2 text-center"><div class="small text-muted">재고없음</div><div class="fw-700 text-secondary">{{ stats.out }}</div></div></div>
+      <div class="col-auto"><div class="card px-3 py-2 text-center"><div class="small text-muted">전체 위치</div><div class="fw-700">{{ total_locations }}</div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Warehouse Grid -->
+<div class="card">
+  <div class="card-header">
+    <h5><i class="fa-solid fa-map me-2 text-primary"></i>창고 구역 배치도</h5>
+  </div>
+  <div class="card-body">
+    <!-- Aisle label -->
+    <div class="d-flex align-items-center mb-2 ms-5">
+      <span class="text-muted small me-2">← 창고 입구</span>
+    </div>
+
+    <div class="warehouse-grid">
+      {% for zone_row in grid_data %}
+      <div class="zone-row">
+        <!-- Zone label -->
+        <div class="zone-label badge bg-{{ zone_row.color }} d-flex flex-column align-items-center justify-content-center">
+          <span class="fs-5 fw-700">{{ zone_row.zone }}</span>
+          <span style="font-size:.65rem; font-weight:400; writing-mode:vertical-lr; text-orientation:mixed; letter-spacing:.05em;">
+            {{ zone_row.name }}
+          </span>
+        </div>
+
+        <!-- Cells -->
+        <div class="zone-cells">
+          {% for cell in zone_row.cells %}
+          <div class="map-cell map-cell-{{ cell.status }}"
+               data-bs-toggle="modal" data-bs-target="#cellModal"
+               data-location="{{ cell.location }}"
+               data-product="{{ cell.product.name if cell.product else '' }}"
+               data-sku="{{ cell.product.sku if cell.product else '' }}"
+               data-stock="{{ cell.stock }}"
+               data-unit="{{ cell.product.unit if cell.product else '' }}"
+               data-status="{{ cell.status }}"
+               data-category="{{ cell.product.category if cell.product else '' }}"
+               data-reorder="{{ cell.product.reorder_point if cell.product else 0 }}"
+               data-product-id="{{ cell.product.id if cell.product else '' }}"
+               data-description="{{ cell.product.description if cell.product else '' }}">
+            <div class="cell-location">{{ cell.location }}</div>
+            {% if cell.product %}
+              <div class="cell-sku">{{ cell.product.sku }}</div>
+              <div class="cell-stock">
+                {{ cell.stock }}
+                <span class="cell-unit">{{ cell.product.unit }}</span>
+              </div>
+            {% else %}
+              <div class="cell-empty-label">빈 공간</div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Aisle / corridor visual -->
+    <div class="warehouse-aisle mt-3">
+      <div class="aisle-label"><i class="fa-solid fa-road me-1"></i>주 통로</div>
+    </div>
+  </div>
+</div>
+
+<!-- Cell Detail Modal -->
+<div class="modal fade" id="cellModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="fa-solid fa-location-dot me-2 text-primary"></i>
+          위치 <span id="mLocation" class="font-monospace text-primary"></span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="mBody">
+      </div>
+      <div class="modal-footer" id="mFooter">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.warehouse-grid { display: flex; flex-direction: column; gap: 12px; }
+.zone-row { display: flex; align-items: stretch; gap: 10px; }
+.zone-label {
+  width: 52px; min-height: 90px; border-radius: 8px; flex-shrink: 0;
+  writing-mode: horizontal-tb; cursor: default;
+}
+.zone-cells { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+.map-cell {
+  width: 110px; min-height: 90px; border-radius: 10px; border: 2px solid transparent;
+  padding: 8px 10px; cursor: pointer; transition: transform .15s, box-shadow .15s;
+  position: relative; display: flex; flex-direction: column; justify-content: space-between;
+}
+.map-cell:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,.15); }
+
+.map-cell-ok      { background: #f0fdf4; border-color: #86efac; }
+.map-cell-warning { background: #fffbeb; border-color: #fcd34d; }
+.map-cell-low     { background: #fff1f2; border-color: #fca5a5; }
+.map-cell-out     { background: #f8f8f8; border-color: #d1d5db; }
+.map-cell-empty   { background: #fafafa; border-color: #e5e7eb; opacity: .5; }
+
+.cell-location { font-size: .65rem; font-weight: 700; color: #6b7280; font-family: monospace; }
+.cell-sku      { font-size: .7rem; color: #374151; font-weight: 600; margin: 2px 0; }
+.cell-stock    { font-size: 1.1rem; font-weight: 800; color: #1f2937; line-height: 1; }
+.cell-unit     { font-size: .6rem; color: #6b7280; font-weight: 400; }
+.cell-empty-label { font-size: .7rem; color: #9ca3af; margin-top: 8px; }
+
+.map-dot {
+  display: inline-block; width: 14px; height: 14px; border-radius: 3px; border: 2px solid;
+}
+.map-ok      { background: #f0fdf4; border-color: #86efac; }
+.map-warning { background: #fffbeb; border-color: #fcd34d; }
+.map-low     { background: #fff1f2; border-color: #fca5a5; }
+.map-out     { background: #f8f8f8; border-color: #d1d5db; }
+.map-empty   { background: #fafafa; border-color: #e5e7eb; }
+
+.warehouse-aisle {
+  background: repeating-linear-gradient(90deg, #f3f4f6 0, #f3f4f6 20px, #e5e7eb 20px, #e5e7eb 21px);
+  height: 28px; border-radius: 6px; display: flex; align-items: center; padding: 0 12px;
+}
+.aisle-label { font-size: .75rem; color: #6b7280; font-weight: 600; }
+</style>
+<script>
+const cellModal = document.getElementById('cellModal');
+cellModal.addEventListener('show.bs.modal', function(e) {
+  const btn = e.relatedTarget;
+  const loc     = btn.dataset.location;
+  const name    = btn.dataset.product;
+  const sku     = btn.dataset.sku;
+  const stock   = btn.dataset.stock;
+  const unit    = btn.dataset.unit;
+  const status  = btn.dataset.status;
+  const cat     = btn.dataset.category;
+  const reorder = btn.dataset.reorder;
+  const pid     = btn.dataset.productId;
+  const desc    = btn.dataset.description;
+
+  document.getElementById('mLocation').textContent = loc;
+
+  const statusMap = {ok:'정상', warning:'주의', low:'재고부족', out:'재고없음', empty:'미사용'};
+  const colorMap  = {ok:'success', warning:'warning', low:'danger', out:'secondary', empty:'secondary'};
+
+  let body = '';
+  if (!name) {
+    body = '<div class="text-center text-muted py-3"><i class="fa-solid fa-box-open fa-2x mb-2 d-block opacity-25"></i>현재 사용하지 않는 위치입니다.</div>';
+  } else {
+    const pct = reorder > 0 ? Math.min(100, Math.round(stock / (reorder * 2) * 100)) : 100;
+    const barColor = status === 'ok' ? 'success' : status === 'warning' ? 'warning' : 'danger';
+    body = `
+      <div class="mb-3">
+        <span class="badge bg-${colorMap[status]}-subtle text-${colorMap[status]} border border-${colorMap[status]}-subtle mb-2">${statusMap[status]}</span>
+        <h5 class="mb-0">${name}</h5>
+        <div class="text-muted small font-monospace">${sku}</div>
+      </div>
+      <div class="row g-2 mb-3">
+        <div class="col-4 text-center"><div class="small text-muted">현재재고</div><div class="fw-700 fs-5">${stock} <span class="small text-muted">${unit}</span></div></div>
+        <div class="col-4 text-center"><div class="small text-muted">재주문점</div><div class="fw-700 fs-5">${reorder}</div></div>
+        <div class="col-4 text-center"><div class="small text-muted">카테고리</div><div class="fw-700 small">${cat}</div></div>
+      </div>
+      <div class="mb-3">
+        <div class="d-flex justify-content-between small text-muted mb-1"><span>재고 수준</span><span>${pct}%</span></div>
+        <div class="progress" style="height:8px;"><div class="progress-bar bg-${barColor}" style="width:${pct}%"></div></div>
+      </div>
+      ${desc ? `<div class="small text-muted border-top pt-2 mt-2">${desc}</div>` : ''}
+    `;
+  }
+  document.getElementById('mBody').innerHTML = body;
+
+  const footer = document.getElementById('mFooter');
+  if (pid) {
+    footer.innerHTML = `
+      <a href="/forecast?product_id=${pid}" class="btn btn-sm btn-outline-primary"><i class="fa-solid fa-chart-line me-1"></i>수요예측</a>
+      <a href="/inventory" class="btn btn-sm btn-outline-secondary"><i class="fa-solid fa-boxes-stacked me-1"></i>재고</a>
+      <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">닫기</button>
+    `;
+  } else {
+    footer.innerHTML = `<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>`;
+  }
+});
+</script>
+{% endblock %}

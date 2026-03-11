@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}발주 관리{% endblock %}
+{% block page_title %}발주 관리{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-start">
+  <div>
+    <h1>발주 관리</h1>
+    <p>구매 발주서 생성, 상태 추적 및 입고 처리</p>
+  </div>
+  <a href="{{ url_for('new_purchase_order') }}" class="btn btn-primary">
+    <i class="fa-solid fa-plus me-1"></i>발주서 작성
+  </a>
+</div>
+
+<!-- Status filter tabs -->
+<ul class="nav nav-tabs mb-4">
+  <li class="nav-item">
+    <a class="nav-link {% if not status_filter %}active{% endif %}" href="{{ url_for('purchase_orders') }}">전체</a>
+  </li>
+  {% for s, label in [('draft','초안'), ('sent','발송됨'), ('confirmed','확인됨'), ('received','입고완료'), ('cancelled','취소')] %}
+  <li class="nav-item">
+    <a class="nav-link {% if status_filter == s %}active{% endif %}"
+       href="{{ url_for('purchase_orders', status=s) }}">{{ label }}</a>
+  </li>
+  {% endfor %}
+</ul>
+
+<div class="card">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table mb-0">
+        <thead>
+          <tr>
+            <th>발주번호</th>
+            <th>공급업체</th>
+            <th>상태</th>
+            <th>발주일</th>
+            <th>납기예정</th>
+            <th>입고일</th>
+            <th>품목수</th>
+            <th>금액</th>
+            <th>유형</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for po in pos %}
+          <tr>
+            <td>
+              <a href="{{ url_for('purchase_order_detail', po_id=po.id) }}" class="font-monospace fw-600 text-decoration-none">
+                {{ po.order_number }}
+              </a>
+            </td>
+            <td class="small fw-500">{{ po.supplier.name }}</td>
+            <td>
+              <span class="badge bg-{{ po.status|po_status_badge }}-subtle text-{{ po.status|po_status_badge }} border border-{{ po.status|po_status_badge }}-subtle">
+                {{ po.status|po_status_label }}
+              </span>
+            </td>
+            <td class="small text-muted">{{ po.created_at.strftime('%Y-%m-%d') }}</td>
+            <td class="small text-muted">{{ po.expected_date.strftime('%Y-%m-%d') if po.expected_date else '—' }}</td>
+            <td class="small {% if po.received_date %}text-success{% else %}text-muted{% endif %}">
+              {{ po.received_date.strftime('%Y-%m-%d') if po.received_date else '—' }}
+            </td>
+            <td class="text-center">{{ po.items|length }}</td>
+            <td class="small">₩{{ po.total_value()|comma }}</td>
+            <td>
+              {% if po.auto_generated %}
+                <span class="badge bg-info-subtle text-info border border-info-subtle" style="font-size:.65rem;">자동발주</span>
+              {% else %}
+                <span class="badge bg-light text-muted border" style="font-size:.65rem;">수동</span>
+              {% endif %}
+            </td>
+            <td>
+              <a href="{{ url_for('purchase_order_detail', po_id=po.id) }}" class="btn btn-sm btn-outline-secondary">
+                상세 <i class="fa-solid fa-chevron-right ms-1 small"></i>
+              </a>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="10" class="text-center text-muted py-4">발주서가 없습니다.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

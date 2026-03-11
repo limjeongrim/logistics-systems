@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block title %}공급업체{% endblock %}
+{% block page_title %}공급업체 관리{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-start">
+  <div>
+    <h1>공급업체</h1>
+    <p>공급업체 정보, 납기, 평가 현황을 관리합니다.</p>
+  </div>
+  <a href="{{ url_for('new_supplier') }}" class="btn btn-primary">
+    <i class="fa-solid fa-plus me-1"></i>업체 등록
+  </a>
+</div>
+
+<!-- Summary cards -->
+<div class="row g-3 mb-4">
+  <div class="col-sm-3">
+    <div class="kpi-card">
+      <div class="kpi-icon bg-primary-subtle"><i class="fa-solid fa-truck text-primary"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-label">전체 공급업체</div>
+        <div class="kpi-value">{{ suppliers|length }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-3">
+    <div class="kpi-card">
+      <div class="kpi-icon bg-success-subtle"><i class="fa-solid fa-circle-check text-success"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-label">활성 업체</div>
+        <div class="kpi-value text-success">{{ suppliers|selectattr('is_active')|list|length }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-3">
+    <div class="kpi-card">
+      <div class="kpi-icon bg-warning-subtle"><i class="fa-solid fa-star text-warning"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-label">평균 평점</div>
+        <div class="kpi-value">
+          {% if suppliers %}
+            {{ "%.1f"|format(suppliers|map(attribute='rating')|sum / suppliers|length) }}
+          {% else %}—{% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-3">
+    <div class="kpi-card">
+      <div class="kpi-icon bg-info-subtle"><i class="fa-solid fa-clock text-info"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-label">평균 납기일</div>
+        <div class="kpi-value">
+          {% if suppliers %}
+            {{ (suppliers|map(attribute='lead_time_days')|sum / suppliers|length)|round(0)|int }}일
+          {% else %}—{% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Supplier table -->
+<div class="card">
+  <div class="card-header">
+    <h5><i class="fa-solid fa-table me-2 text-primary"></i>공급업체 목록</h5>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table mb-0">
+        <thead>
+          <tr>
+            <th>업체명</th>
+            <th>담당자</th>
+            <th>연락처</th>
+            <th>취급 카테고리</th>
+            <th>납기일</th>
+            <th>평점</th>
+            <th>발주 현황</th>
+            <th>상태</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in suppliers %}
+          <tr>
+            <td>
+              <a href="{{ url_for('supplier_detail', supplier_id=s.id) }}" class="fw-600 text-decoration-none">
+                {{ s.name }}
+              </a>
+            </td>
+            <td class="small">{{ s.contact_person or '—' }}</td>
+            <td class="small text-muted">{{ s.phone or '—' }}</td>
+            <td>
+              {% if s.category %}
+                <span class="badge bg-light text-dark border">{{ s.category }}</span>
+              {% else %}—{% endif %}
+            </td>
+            <td>
+              <span class="badge {% if s.lead_time_days <= 5 %}bg-success-subtle text-success{% elif s.lead_time_days <= 10 %}bg-warning-subtle text-warning{% else %}bg-danger-subtle text-danger{% endif %}">
+                {{ s.lead_time_days }}일
+              </span>
+            </td>
+            <td>
+              {% set stars = s.rating|round(0)|int %}
+              <span class="text-warning">
+                {% for i in range(5) %}
+                  {% if i < stars %}<i class="fa-solid fa-star" style="font-size:.75rem;"></i>
+                  {% else %}<i class="fa-regular fa-star" style="font-size:.75rem;color:#d1d5db;"></i>
+                  {% endif %}
+                {% endfor %}
+              </span>
+              <span class="small text-muted ms-1">{{ "%.1f"|format(s.rating) }}</span>
+            </td>
+            <td>
+              <div class="small">
+                <span class="text-muted">전체:</span> <strong>{{ s.total_orders() }}</strong>
+                {% if s.pending_orders() > 0 %}
+                  <span class="ms-2 badge bg-primary-subtle text-primary">진행중 {{ s.pending_orders() }}</span>
+                {% endif %}
+              </div>
+            </td>
+            <td>
+              {% if s.is_active %}
+                <span class="badge bg-success-subtle text-success border border-success-subtle">활성</span>
+              {% else %}
+                <span class="badge bg-secondary-subtle text-secondary border">비활성</span>
+              {% endif %}
+            </td>
+            <td>
+              <a href="{{ url_for('supplier_detail', supplier_id=s.id) }}" class="btn btn-sm btn-outline-secondary">
+                상세 <i class="fa-solid fa-chevron-right ms-1 small"></i>
+              </a>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="9" class="text-center text-muted py-4">등록된 공급업체가 없습니다.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

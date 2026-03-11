@@ -4,20 +4,52 @@ from datetime import datetime
 db = SQLAlchemy()
 
 
+class Supplier(db.Model):
+    __tablename__ = 'suppliers'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    contact_person = db.Column(db.String(50))
+    phone = db.Column(db.String(20))
+    email = db.Column(db.String(100))
+    address = db.Column(db.Text)
+    lead_time_days = db.Column(db.Integer, default=7)
+    rating = db.Column(db.Float, default=3.0)  # 1–5
+    category = db.Column(db.String(50))
+    notes = db.Column(db.Text)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    purchase_orders = db.relationship('PurchaseOrder', backref='supplier', lazy='dynamic')
+    products = db.relationship('Product', backref='supplier', foreign_keys='Product.supplier_id', lazy='dynamic')
+
+    def total_orders(self):
+        return self.purchase_orders.count()
+
+    def pending_orders(self):
+        return self.purchase_orders.filter(PurchaseOrder.status.in_(['sent', 'confirmed'])).count()
+
+    def received_orders(self):
+        return self.purchase_orders.filter_by(status='received').count()
+
+
 class Product(db.Model):
     __tablename__ = 'products'
     id = db.Column(db.Integer, primary_key=True)
     sku = db.Column(db.String(20), unique=True, nullable=False)
+    barcode = db.Column(db.String(50), unique=True)
     name = db.Column(db.String(100), nullable=False)
     category = db.Column(db.String(50))
     unit = db.Column(db.String(20), default='EA')
     reorder_point = db.Column(db.Integer, default=10)
-    location = db.Column(db.String(20))  # e.g. A1-01
+    location = db.Column(db.String(20))
     description = db.Column(db.Text)
+    unit_price = db.Column(db.Integer, default=0)  # KRW
+    supplier_id = db.Column(db.Integer, db.ForeignKey('suppliers.id'))
 
     inventory = db.relationship('Inventory', backref='product', uselist=False, cascade='all, delete-orphan')
     transactions = db.relationship('Transaction', backref='product', lazy='dynamic')
     work_order_items = db.relationship('WorkOrderItem', backref='product', lazy='dynamic')
+    po_items = db.relationship('PurchaseOrderItem', backref='product', lazy='dynamic')
 
     def current_stock(self):
         return self.inventory.quantity if self.inventory else 0
@@ -61,8 +93,8 @@ class WorkOrder(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     order_number = db.Column(db.String(20), unique=True, nullable=False)
     customer = db.Column(db.String(100))
-    status = db.Column(db.String(20), default='pending')  # pending, in_progress, completed, cancelled
-    priority = db.Column(db.String(10), default='normal')  # low, normal, high, urgent
+    status = db.Column(db.String(20), default='pending')
+    priority = db.Column(db.String(10), default='normal')
     notes = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -96,3 +128,34 @@ class WorkOrderItem(db.Model):
         if self.quantity_picked >= self.quantity_required:
             return 'complete'
         return 'partial'
+
+
+class PurchaseOrder(db.Model):
+    __tablename__ = 'purchase_orders'
+    id = db.Column(db.Integer, primary_key=True)
+    order_number = db.Column(db.String(20), unique=True, nullable=False)
+    supplier_id = db.Column(db.Integer, db.ForeignKey('suppliers.id'), nullable=False)
+    status = db.Column(db.String(20), default='draft')  # draft, sent, confirmed, received, cancelled
+    notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    expected_date = db.Column(db.DateTime)
+    received_date = db.Column(db.DateTime)
+    auto_generated = db.Column(db.Boolean, default=False)
+
+    items = db.relationship('PurchaseOrderItem', backref='purchase_order', lazy=True, cascade='all, delete-orphan')
+
+    def total_qty(self):
+        return sum(i.quantity_ordered for i in self.items)
+
+    def total_value(self):
+        return sum(i.quantity_ordered * i.unit_price for i in self.items)
+
+
+class PurchaseOrderItem(db.Model):
+    __tablename__ = 'purchase_order_items'
+    id = db.Column(db.Integer, primary_key=True)
+    po_id = db.Column(db.Integer, db.ForeignKey('purchase_orders.id'), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
+    quantity_ordered = db.Column(db.Integer, nullable=False)
+    quantity_received = db.Column(db.Integer, default=0)
+    unit_price = db.Column(db.Integer, default=0)  # KRW
