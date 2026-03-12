@@ -1,0 +1,348 @@
+{% extends "base.html" %}
+{% block title %}통합 대시보드{% endblock %}
+{% block page_title %}통합 물류 관제 대시보드{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex align-items-center justify-content-between">
+  <div>
+    <h1><i class="fa-solid fa-network-wired me-2" style="color:#8b5cf6"></i>통합 물류 관제 센터</h1>
+    <p>WMS 창고관리 + TMS 운송관리 실시간 연동 현황</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{{ wms_url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+      <i class="fa-solid fa-warehouse me-1"></i>WMS 바로가기
+    </a>
+    <a href="{{ tms_url }}" target="_blank" class="btn btn-sm btn-outline-warning">
+      <i class="fa-solid fa-truck-fast me-1"></i>TMS 바로가기
+    </a>
+  </div>
+</div>
+
+<!-- ── WMS KPIs ── -->
+<div class="d-flex align-items-center gap-2 mb-2">
+  <span class="section-label wms"><i class="fa-solid fa-warehouse me-1"></i>WMS 창고관리</span>
+  <div class="flex-grow-1 border-top" style="border-color:#e2e8f0!important"></div>
+</div>
+<div class="row g-3 mb-4">
+  <div class="col-xl-3 col-md-6">
+    <div class="kpi-card wms-card">
+      <div class="kpi-icon blue"><i class="fa-solid fa-boxes-stacked"></i></div>
+      <div>
+        <div class="kpi-source wms">WMS</div>
+        <div class="kpi-value">{{ wms_total_stock | comma }}</div>
+        <div class="kpi-label">총 재고 수량</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-xl-3 col-md-6">
+    <div class="kpi-card wms-card">
+      <div class="kpi-icon blue"><i class="fa-solid fa-arrow-up-from-bracket"></i></div>
+      <div>
+        <div class="kpi-source wms">WMS</div>
+        <div class="kpi-value">{{ wms_today_outbound }}</div>
+        <div class="kpi-label">오늘 출고 건수</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-xl-3 col-md-6">
+    <div class="kpi-card wms-card {% if wms_low_stock > 0 %}border-warning{% endif %}">
+      <div class="kpi-icon {% if wms_low_stock > 0 %}amber{% else %}green{% endif %}">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+      </div>
+      <div>
+        <div class="kpi-source wms">WMS</div>
+        <div class="kpi-value {% if wms_low_stock > 0 %}text-warning{% endif %}">{{ wms_low_stock }}</div>
+        <div class="kpi-label">재고 경고 품목</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-xl-3 col-md-6">
+    <div class="kpi-card wms-card">
+      <div class="kpi-icon cyan"><i class="fa-solid fa-clipboard-list"></i></div>
+      <div>
+        <div class="kpi-source wms">WMS</div>
+        <div class="kpi-value">{{ wms_pending_wo }}</div>
+        <div class="kpi-label">진행중 작업지시</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── TMS KPIs ── -->
+<div class="d-flex align-items-center gap-2 mb-2">
+  <span class="section-label tms"><i class="fa-solid fa-truck-fast me-1"></i>TMS 운송관리</span>
+  <div class="flex-grow-1 border-top" style="border-color:#e2e8f0!important"></div>
+</div>
+<div class="row g-3 mb-4">
+  <div class="col-xl-3 col-md-6">
+    <div class="kpi-card tms-card">
+      <div class="kpi-icon orange"><i class="fa-solid fa-route"></i></div>
+      <div>
+        <div class="kpi-source tms">TMS</div>
+        <div class="kpi-value">{{ tms_in_transit + tms_dispatched }}</div>
+        <div class="kpi-label">배차·운송 중</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-xl-3 col-md-6">
+    <div class="kpi-card tms-card">
+      <div class="kpi-icon green"><i class="fa-solid fa-circle-check"></i></div>
+      <div>
+        <div class="kpi-source tms">TMS</div>
+        <div class="kpi-value">{{ tms_delivered_today }}</div>
+        <div class="kpi-label">오늘 배달 완료</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-xl-3 col-md-6">
+    <div class="kpi-card tms-card">
+      <div class="kpi-icon orange"><i class="fa-solid fa-truck"></i></div>
+      <div>
+        <div class="kpi-source tms">TMS</div>
+        <div class="kpi-value">{{ tms_avail_vehicles }}</div>
+        <div class="kpi-label">가용 차량</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-xl-3 col-md-6">
+    <div class="kpi-card tms-card {% if tms_over_hours > 0 %}border-warning{% endif %}">
+      <div class="kpi-icon {% if tms_over_hours > 0 %}red{% else %}gray{% endif %}">
+        <i class="fa-solid fa-user-clock"></i>
+      </div>
+      <div>
+        <div class="kpi-source tms">TMS</div>
+        <div class="kpi-value {% if tms_over_hours > 0 %}text-danger{% endif %}">{{ tms_over_hours }}</div>
+        <div class="kpi-label">초과근무 기사</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Order Flow Pipeline ── -->
+<div class="card mb-4">
+  <div class="card-header">
+    <h5><i class="fa-solid fa-arrow-right-arrow-left me-2" style="color:#8b5cf6"></i>주문 처리 흐름 파이프라인</h5>
+    <a href="{{ url_for('orders') }}" class="btn btn-sm btn-outline-secondary">
+      <i class="fa-solid fa-list me-1"></i>상세 관리
+    </a>
+  </div>
+  <div class="flow-pipeline">
+    {% for step in funnel %}
+    <div class="flow-step {{ step.color }}">
+      <div class="flow-step-icon">
+        <i class="fa-solid fa-{{ step.icon }}"></i>
+      </div>
+      <div class="flow-step-count">{{ step.count }}</div>
+      <div class="flow-step-label">{{ step.label }}</div>
+    </div>
+    {% if not loop.last %}
+    <div class="flow-arrow d-none d-md-flex">
+      <i class="fa-solid fa-chevron-right"></i>
+    </div>
+    {% endif %}
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ── Connected Orders + Alert Center ── -->
+<div class="row g-3 mb-4">
+
+  <!-- Connected Orders -->
+  <div class="col-xl-7">
+    <div class="card h-100">
+      <div class="card-header">
+        <h6><i class="fa-solid fa-link me-2" style="color:#8b5cf6"></i>연동 주문 현황
+          <span class="badge bg-secondary ms-2">{{ recent_links | length }}건</span>
+        </h6>
+        <a href="{{ url_for('orders') }}" class="btn btn-sm btn-outline-secondary">전체 보기</a>
+      </div>
+      <div class="card-body p-0">
+        {% if recent_links %}
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead>
+              <tr>
+                <th>WMS 출고</th>
+                <th>품목</th>
+                <th>TMS 화물</th>
+                <th>목적지</th>
+                <th>상태</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for link in recent_links %}
+              {% set tms = tms_ship_map.get(link.tms_shipment_id) %}
+              <tr>
+                <td>
+                  <div class="fw-semibold small">{{ link.wms_reference or ('TXN-' ~ link.wms_transaction_id) }}</div>
+                  <div class="text-muted" style="font-size:.72rem">{{ link.created_at | short_dt }}</div>
+                </td>
+                <td>
+                  <div class="small">{{ (link.product_name or '-')[:20] }}</div>
+                  <div class="text-muted" style="font-size:.72rem">× {{ link.quantity }}</div>
+                </td>
+                <td>
+                  {% if link.tms_shipment_number %}
+                  <a href="{{ tms_url }}/shipments/{{ link.tms_shipment_id }}" target="_blank"
+                     class="text-decoration-none small fw-semibold">
+                    {{ link.tms_shipment_number }}
+                    <i class="fa-solid fa-arrow-up-right-from-square ms-1" style="font-size:.6rem;color:#94a3b8"></i>
+                  </a>
+                  {% else %}
+                  <span class="text-muted small">미등록</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <span class="small">{{ link.dest_city or '-' }}</span>
+                </td>
+                <td>
+                  <span class="badge bg-{{ link.status | link_status_color }}">
+                    {{ link.status | link_status_label }}
+                  </span>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+          <i class="fa-solid fa-link-slash fa-2x mb-3 d-block opacity-30"></i>
+          연동된 주문이 없습니다.<br>
+          <a href="{{ url_for('orders') }}" class="btn btn-sm btn-primary mt-3">
+            <i class="fa-solid fa-arrows-rotate me-1"></i>WMS 출고 동기화
+          </a>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Alert Center -->
+  <div class="col-xl-5">
+    <div class="card h-100">
+      <div class="card-header">
+        <h6><i class="fa-solid fa-bell me-2" style="color:#f59e0b"></i>통합 알림 센터
+          {% if alerts %}
+          <span class="badge bg-danger ms-2">{{ alerts | length }}</span>
+          {% endif %}
+        </h6>
+      </div>
+      <div class="card-body">
+        {% if alerts %}
+          {% for a in alerts %}
+          <div class="alert-item {{ a.type }}">
+            <i class="fa-solid fa-{{ a.icon }} ai-icon"></i>
+            <div>
+              <span class="alert-source">{{ a.source }}</span>
+              {{ a.msg }}
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+        <div class="text-center py-4 text-muted">
+          <i class="fa-solid fa-circle-check fa-2x mb-2 d-block" style="color:#22c55e;opacity:.5"></i>
+          모든 시스템 정상
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Monthly Trend Chart ── -->
+<div class="row g-3 mb-4">
+  <div class="col-xl-8">
+    <div class="card">
+      <div class="card-header">
+        <h6><i class="fa-solid fa-chart-bar me-2" style="color:#8b5cf6"></i>월별 WMS 출고 vs TMS 배송 처리량</h6>
+      </div>
+      <div class="card-body">
+        <canvas id="monthlyChart" height="120"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-4">
+    <div class="card h-100">
+      <div class="card-header">
+        <h6><i class="fa-solid fa-circle-nodes me-2" style="color:#8b5cf6"></i>연동 현황</h6>
+      </div>
+      <div class="card-body">
+        <div class="mb-3">
+          <div class="d-flex justify-content-between mb-1">
+            <small class="text-muted">WMS→TMS 연동률</small>
+            {% set pct = ((bridge_total - bridge_pending) / bridge_total * 100) | round if bridge_total else 0 %}
+            <small class="fw-semibold">{{ pct }}%</small>
+          </div>
+          <div class="progress" style="height:8px;border-radius:4px">
+            <div class="progress-bar" style="width:{{ pct }}%;background:var(--primary)"></div>
+          </div>
+        </div>
+
+        <div class="d-flex flex-column gap-2 mt-3">
+          <div class="d-flex justify-content-between align-items-center p-2 rounded" style="background:#f8fafc">
+            <span class="small"><span class="status-dot pending"></span>TMS 미등록</span>
+            <strong>{{ bridge_pending }}</strong>
+          </div>
+          <div class="d-flex justify-content-between align-items-center p-2 rounded" style="background:#f8fafc">
+            <span class="small"><span class="status-dot registered"></span>TMS 대기</span>
+            <strong>{{ bridge_registered }}</strong>
+          </div>
+          <div class="d-flex justify-content-between align-items-center p-2 rounded" style="background:#f8fafc">
+            <span class="small"><span class="status-dot dispatched"></span>배송중</span>
+            <strong>{{ tms_in_transit + tms_dispatched }}</strong>
+          </div>
+          <div class="d-flex justify-content-between align-items-center p-2 rounded" style="background:#f8fafc">
+            <span class="small"><span class="status-dot delivered"></span>배달완료</span>
+            <strong>{{ tms_delivered_today }}</strong>
+          </div>
+        </div>
+
+        <div class="mt-3 pt-3 border-top">
+          <div class="small text-muted mb-1">TMS 총 운임</div>
+          <div class="fw-bold" style="color:var(--tms-color)">₩{{ tms_revenue | comma }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const monthly = {{ monthly_json | safe }};
+new Chart(document.getElementById('monthlyChart'), {
+  data: {
+    labels: monthly.map(d => d.month),
+    datasets: [
+      {
+        type: 'bar',
+        label: 'WMS 출고',
+        data: monthly.map(d => d.wms),
+        backgroundColor: 'rgba(59,130,246,.7)',
+        borderRadius: 6,
+        borderSkipped: false,
+      },
+      {
+        type: 'bar',
+        label: 'TMS 배송',
+        data: monthly.map(d => d.tms),
+        backgroundColor: 'rgba(249,115,22,.7)',
+        borderRadius: 6,
+        borderSkipped: false,
+      },
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { position: 'top' } },
+    scales: {
+      x: { grid: { display: false } },
+      y: { beginAtZero: true, grid: { color: '#f1f5f9' } }
+    }
+  }
+});
+</script>
+{% endblock %}

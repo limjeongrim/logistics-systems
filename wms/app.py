@@ -6,6 +6,8 @@ from collections import defaultdict
 import json
 import math
 import statistics
+import os
+import sqlite3 as _sqlite3
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'wms-dev-secret-2024'
@@ -13,6 +15,28 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///wms.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
+
+_BRIDGE_DB = os.path.normpath(os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), '..', 'integration', 'instance', 'bridge.db'))
+
+
+def _notify_bridge(txn_id, product_name, quantity, reference, unit_price=0):
+    """Write new outbound transaction to bridge DB for TMS integration (silent fail)."""
+    try:
+        if not os.path.exists(_BRIDGE_DB):
+            return
+        weight_kg = round(max(1.0, (unit_price or 10000) / 10000 * 5), 1)
+        conn = _sqlite3.connect(_BRIDGE_DB)
+        conn.execute(
+            "INSERT OR IGNORE INTO wms_tms_links "
+            "(wms_transaction_id, wms_reference, product_name, quantity, weight_kg, "
+            " status, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, 'pending', datetime('now'), datetime('now'))",
+            (txn_id, reference, product_name, quantity, weight_kg))
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass  # bridge integration is optional
 
 
 # ─────────────────────────────────────────────
@@ -395,7 +419,8 @@ def outbound():
         product.inventory.quantity -= quantity
         product.inventory.last_updated = datetime.utcnow()
         db.session.commit()
-        flash(f'출고 등록: -{quantity} {product.unit} / {product.name}', 'success')
+        _notify_bridge(txn.id, product.name, quantity, reference, product.unit_price or 0)
+        flash(f'출고 등록: -{quantity} {product.unit} / {product.name} — TMS 배송 요청 대기열에 자동 추가됨', 'success')
         return redirect(url_for('outbound'))
 
     products = Product.query.order_by(Product.name).all()

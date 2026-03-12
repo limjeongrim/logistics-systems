@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+{% block title %}주문 흐름 관리{% endblock %}
+{% block page_title %}WMS → TMS 주문 흐름 관리{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1><i class="fa-solid fa-arrows-rotate me-2" style="color:#8b5cf6"></i>주문 흐름 연동 관리</h1>
+  <p>WMS 출고 내역을 TMS 배송 화물로 자동 등록·추적합니다.</p>
+</div>
+
+<!-- Actions -->
+<div class="card mb-4">
+  <div class="card-body d-flex align-items-center gap-3 flex-wrap py-3">
+    <form action="{{ url_for('sync_outbound') }}" method="POST" class="m-0">
+      <button type="submit" class="btn btn-primary">
+        <i class="fa-solid fa-rotate me-2"></i>WMS 출고 내역 동기화
+      </button>
+    </form>
+    <div class="text-muted small">
+      <i class="fa-solid fa-circle-info me-1"></i>
+      동기화 버튼을 클릭하면 최근 WMS 출고 내역이 연동 목록에 추가됩니다.
+    </div>
+    <div class="ms-auto d-flex gap-2">
+      <a href="{{ wms_url }}/outbound" target="_blank" class="btn btn-sm btn-outline-primary">
+        <i class="fa-solid fa-warehouse me-1"></i>WMS 출고 페이지
+      </a>
+      <a href="{{ tms_url }}/shipments" target="_blank" class="btn btn-sm btn-outline-warning">
+        <i class="fa-solid fa-truck-fast me-1"></i>TMS 화물 목록
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- Legend -->
+<div class="d-flex gap-2 flex-wrap mb-3">
+  <div class="d-flex align-items-center gap-1 small text-muted">
+    <span class="badge bg-secondary">TMS 미등록</span> WMS 출고됐지만 TMS에 배송 요청 없음
+  </div>
+  <div class="d-flex align-items-center gap-1 small text-muted">
+    <span class="badge bg-info">TMS 대기</span> TMS 화물 생성됨, 배차 대기
+  </div>
+  <div class="d-flex align-items-center gap-1 small text-muted">
+    <span class="badge bg-primary">배송중</span> 배차 완료 또는 운송 중
+  </div>
+  <div class="d-flex align-items-center gap-1 small text-muted">
+    <span class="badge bg-success">배달완료</span> 최종 배송 완료
+  </div>
+</div>
+
+<!-- Orders Table -->
+<div class="card">
+  <div class="card-header">
+    <h6><i class="fa-solid fa-table-list me-2"></i>WMS 출고 ↔ TMS 화물 연동 현황
+      <span class="badge bg-secondary ms-2">{{ rows | length }}건</span>
+    </h6>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>WMS 출고 일시</th>
+          <th>출고 번호</th>
+          <th>품목</th>
+          <th>수량</th>
+          <th>TMS 화물번호</th>
+          <th>목적지</th>
+          <th>우선순위</th>
+          <th>TMS 상태</th>
+          <th>연동 상태</th>
+          <th>액션</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        {% set txn = row.txn %}
+        {% set link = row.link %}
+        {% set tms = row.tms %}
+        <tr class="{% if not link %}order-row-pending{% elif link.status == 'tms_registered' %}order-row-registered{% elif link.status == 'dispatched' %}order-row-dispatched{% elif link.status == 'delivered' %}order-row-delivered{% endif %}">
+          <td>
+            <div class="small">{{ txn.created_at[:16] if txn.created_at else '-' }}</div>
+          </td>
+          <td>
+            <div class="fw-semibold small">{{ txn.reference or ('TXN-' ~ txn.id) }}</div>
+            <div class="text-muted" style="font-size:.7rem">{{ txn.sku }}</div>
+          </td>
+          <td>
+            <div class="small">{{ txn.product_name[:22] if txn.product_name else '-' }}</div>
+            <div class="text-muted" style="font-size:.7rem">{{ txn.category or '' }}</div>
+          </td>
+          <td class="text-center">
+            <span class="small fw-semibold">{{ txn.quantity }}</span>
+            <span class="text-muted" style="font-size:.7rem">{{ txn.unit }}</span>
+          </td>
+          <td>
+            {% if link and link.tms_shipment_number %}
+            <a href="{{ tms_url }}/shipments/{{ link.tms_shipment_id }}" target="_blank"
+               class="text-decoration-none fw-semibold small" style="color:#f97316">
+              {{ link.tms_shipment_number }}
+              <i class="fa-solid fa-arrow-up-right-from-square ms-1" style="font-size:.6rem;color:#94a3b8"></i>
+            </a>
+            {% else %}
+            <span class="text-muted small">—</span>
+            {% endif %}
+          </td>
+          <td>
+            <span class="small">{{ link.dest_city if link and link.dest_city else '—' }}</span>
+          </td>
+          <td>
+            {% if tms %}
+            <span class="badge bg-{{ tms.priority | priority_color }}">
+              {{ tms.priority | priority_label }}
+            </span>
+            {% else %}—
+            {% endif %}
+          </td>
+          <td>
+            {% if tms %}
+            <span class="badge bg-{{ tms.status | tms_status_color }}">
+              {{ tms.status | tms_status_label }}
+            </span>
+            {% else %}
+            <span class="text-muted small">—</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if link %}
+            <span class="badge bg-{{ link.status | link_status_color }}">
+              {{ link.status | link_status_label }}
+            </span>
+            {% else %}
+            <span class="badge bg-secondary">미동기화</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if not link or not link.tms_shipment_id %}
+            <button type="button" class="btn btn-sm btn-primary"
+                    data-bs-toggle="modal" data-bs-target="#registerModal"
+                    data-txn-id="{{ txn.id }}"
+                    data-txn-ref="{{ txn.reference or '' }}"
+                    data-product="{{ txn.product_name }}"
+                    data-qty="{{ txn.quantity }}"
+                    data-weight="{{ ((txn.unit_price or 10000) / 10000 * 5) | round(1) }}">
+              <i class="fa-solid fa-plus me-1"></i>TMS 등록
+            </button>
+            {% elif tms and tms.status not in ('delivered', 'cancelled') %}
+            <a href="{{ tms_url }}/shipments/{{ link.tms_shipment_id }}" target="_blank"
+               class="btn btn-sm btn-outline-secondary">
+              <i class="fa-solid fa-eye me-1"></i>추적
+            </a>
+            {% elif tms and tms.status == 'delivered' %}
+            <span class="text-success small"><i class="fa-solid fa-circle-check me-1"></i>완료</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="10" class="text-center py-5 text-muted">
+            <i class="fa-solid fa-inbox fa-2x mb-3 d-block opacity-30"></i>
+            WMS 출고 내역이 없습니다. 동기화 버튼을 클릭해 주세요.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── Register Modal ── -->
+<div class="modal fade" id="registerModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fa-solid fa-truck-fast me-2" style="color:#8b5cf6"></i>TMS 배송 자동 등록</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form action="{{ url_for('register_to_tms') }}" method="POST">
+        <div class="modal-body">
+          <input type="hidden" name="wms_transaction_id" id="modal_txn_id">
+
+          <div class="alert alert-info mb-3 py-2 small">
+            <i class="fa-solid fa-circle-info me-1"></i>
+            <strong id="modal_product_info"></strong>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label">고객명 <span class="text-muted">(선택)</span></label>
+              <input type="text" name="customer_name" class="form-control"
+                     placeholder="예: 삼성전자 (주), 미입력시 출고번호 사용">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">배송 목적지 도시 <span class="text-danger">*</span></label>
+              <select name="dest_city" class="form-select" required>
+                {% for city, lat, lng in cities %}
+                <option value="{{ city }}" {% if city == '서울' %}selected{% endif %}>{{ city }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">우선순위</label>
+              <select name="priority" class="form-select">
+                <option value="standard">일반 (72시간 SLA)</option>
+                <option value="express">특급 (36시간 SLA)</option>
+                <option value="urgent">긴급 (24시간 SLA)</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">예상 중량 (kg)</label>
+              <input type="number" name="weight_kg" id="modal_weight" class="form-control"
+                     step="0.1" min="0.1" value="10">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">예상 부피 (m³)</label>
+              <input type="number" name="volume_m3" class="form-control"
+                     step="0.01" min="0.01" value="0.5">
+            </div>
+          </div>
+          <div class="mt-3 p-3 rounded small text-muted" style="background:#f8fafc">
+            <i class="fa-solid fa-warehouse me-1"></i>
+            출발지: 서울특별시 송파구 문정동 물류센터 (WMS 창고)
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">취소</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="fa-solid fa-truck-fast me-1"></i>TMS 화물 자동 등록
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('registerModal').addEventListener('show.bs.modal', function(e) {
+  const btn = e.relatedTarget;
+  document.getElementById('modal_txn_id').value   = btn.dataset.txnId;
+  document.getElementById('modal_weight').value   = btn.dataset.weight;
+  document.getElementById('modal_product_info').textContent =
+    (btn.dataset.product || '?') + ' × ' + (btn.dataset.qty || '?') + '개 | 출고번호: ' + (btn.dataset.txnRef || 'N/A');
+});
+</script>
+{% endblock %}

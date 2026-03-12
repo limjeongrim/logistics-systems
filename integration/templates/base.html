@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}통합관제{% endblock %} — LogiHub</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
+  <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet"/>
+</head>
+<body>
+
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-icon"><i class="fa-solid fa-network-wired"></i></div>
+    <div>
+      <div class="brand-text">LogiHub</div>
+      <div class="brand-sub">통합 물류 관제</div>
+    </div>
+  </div>
+
+  <ul class="sidebar-nav">
+    <li class="nav-label">관제 센터</li>
+    <li>
+      <a href="{{ url_for('dashboard') }}"
+         class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
+        <i class="fa-solid fa-gauge-high"></i><span>통합 대시보드</span>
+      </a>
+    </li>
+    <li>
+      <a href="{{ url_for('orders') }}"
+         class="nav-link {% if request.endpoint == 'orders' %}active{% endif %}">
+        <i class="fa-solid fa-arrows-rotate"></i><span>주문 흐름 관리</span>
+      </a>
+    </li>
+
+    <li class="nav-label">시스템 바로가기</li>
+    <li>
+      <a href="http://localhost:5000" target="_blank" class="nav-link external">
+        <i class="fa-solid fa-warehouse" style="color:#3b82f6"></i>
+        <span>WMS 창고관리 <i class="fa-solid fa-arrow-up-right-from-square ms-1" style="font-size:.65rem"></i></span>
+      </a>
+    </li>
+    <li>
+      <a href="http://localhost:5001" target="_blank" class="nav-link external">
+        <i class="fa-solid fa-truck-fast" style="color:#f97316"></i>
+        <span>TMS 운송관리 <i class="fa-solid fa-arrow-up-right-from-square ms-1" style="font-size:.65rem"></i></span>
+      </a>
+    </li>
+  </ul>
+
+  <div class="sidebar-footer">
+    <i class="fa-solid fa-circle" style="color:#22c55e;font-size:.5rem"></i>
+    v1.0 — LogiHub &mdash; Port 5002
+  </div>
+</nav>
+
+<div class="main-wrapper" id="mainWrapper">
+  <header class="topbar">
+    <button class="btn btn-link sidebar-toggle" id="sidebarToggle">
+      <i class="fa-solid fa-bars"></i>
+    </button>
+    <div class="topbar-title">{% block page_title %}{% endblock %}</div>
+    <div class="d-flex align-items-center gap-3">
+      <span class="topbar-badge"><i class="fa-solid fa-network-wired me-1"></i>통합관제</span>
+      <span class="text-muted small"><span id="clock"></span></span>
+    </div>
+  </header>
+
+  <div class="content-area">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for cat, msg in messages %}
+        <div class="alert alert-{{ cat }} alert-dismissible fade show mb-4" role="alert">
+          <i class="fa-solid fa-{% if cat == 'success' %}circle-check{% elif cat == 'danger' %}circle-xmark{% else %}circle-info{% endif %} me-2"></i>
+          {{ msg }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+  function updateClock() {
+    document.getElementById('clock').textContent = new Date().toLocaleString('ko-KR', {
+      month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+  }
+  updateClock(); setInterval(updateClock, 60000);
+
+  document.getElementById('sidebarToggle').addEventListener('click', function () {
+    document.getElementById('sidebar').classList.toggle('collapsed');
+    document.getElementById('mainWrapper').classList.toggle('expanded');
+  });
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>
