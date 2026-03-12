@@ -1,92 +1,402 @@
 {% extends "base.html" %}
-{% block title %}차량{% endblock %}
+{% block title %}차량 관리{% endblock %}
 {% block page_title %}차량 관리{% endblock %}
 
 {% block content %}
 <div class="page-header d-flex align-items-start justify-content-between">
   <div>
     <h1>차량 관리</h1>
-    <p>운송 네트워크의 차량 및 기사를 관리하세요</p>
+    <p>운송 차량 현황, 연료 비용, 정비 일정을 관리합니다.</p>
   </div>
   <a href="{{ url_for('new_vehicle') }}" class="btn btn-primary">
     <i class="fa-solid fa-plus me-2"></i>차량 추가
   </a>
 </div>
 
-<!-- KPIs -->
+<!-- Overdue maintenance alert -->
+{% if overdue_count > 0 %}
+<div class="alert alert-danger mb-4">
+  <i class="fa-solid fa-triangle-exclamation me-2"></i>
+  <strong>정비 기한 초과 경고:</strong>
+  {{ overdue_count }}대 차량이 정비 기한을 초과했습니다. 즉시 점검이 필요합니다.
+</div>
+{% endif %}
+
+<!-- KPI cards -->
 <div class="row g-3 mb-4">
-  <div class="col-sm-4">
+  <div class="col-sm-3">
     <div class="kpi-card">
-      <div class="kpi-icon green"><i class="fa-solid fa-circle-check"></i></div>
-      <div><div class="kpi-value">{{ avail }}</div><div class="kpi-label">가용</div></div>
+      <div class="kpi-icon bg-success-subtle"><i class="fa-solid fa-circle-check text-success"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-label">가용</div>
+        <div class="kpi-value text-success">{{ avail }}</div>
+      </div>
     </div>
   </div>
-  <div class="col-sm-4">
+  <div class="col-sm-3">
     <div class="kpi-card">
-      <div class="kpi-icon cyan"><i class="fa-solid fa-route"></i></div>
-      <div><div class="kpi-value">{{ on_rt }}</div><div class="kpi-label">운행중</div></div>
+      <div class="kpi-icon bg-primary-subtle"><i class="fa-solid fa-route text-primary"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-label">운행중</div>
+        <div class="kpi-value text-primary">{{ on_rt }}</div>
+      </div>
     </div>
   </div>
-  <div class="col-sm-4">
+  <div class="col-sm-3">
     <div class="kpi-card">
-      <div class="kpi-icon amber"><i class="fa-solid fa-wrench"></i></div>
-      <div><div class="kpi-value">{{ maint }}</div><div class="kpi-label">점검중</div></div>
+      <div class="kpi-icon bg-warning-subtle"><i class="fa-solid fa-wrench text-warning"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-label">점검중</div>
+        <div class="kpi-value text-warning">{{ maint }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-3">
+    <div class="kpi-card">
+      <div class="kpi-icon bg-danger-subtle"><i class="fa-solid fa-triangle-exclamation text-danger"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-label">정비 초과</div>
+        <div class="kpi-value text-danger">{{ overdue_count }}</div>
+      </div>
     </div>
   </div>
 </div>
 
-<div class="card">
-  <div class="card-header">
-    <h5><i class="fa-solid fa-truck me-2 text-primary"></i>
-      차량 <span class="badge bg-secondary ms-2">{{ vehicles|length }} 대</span>
-    </h5>
-  </div>
-  <div class="card-body p-0">
-    <div class="table-responsive">
-      <table class="table mb-0">
-        <thead>
-          <tr><th>차량번호</th><th>차량 종류</th><th>적재량</th><th>기사</th><th>전화번호</th><th>상태</th><th>거점</th><th>작업</th></tr>
-        </thead>
-        <tbody>
+<div class="row g-4">
+  <!-- Vehicle table -->
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header">
+        <h5><i class="fa-solid fa-truck me-2 text-primary"></i>
+          차량 현황 <span class="badge bg-secondary ms-2">{{ vehicles|length }} 대</span>
+        </h5>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table mb-0">
+            <thead>
+              <tr>
+                <th>차량번호</th>
+                <th>유형</th>
+                <th>기사</th>
+                <th>연비</th>
+                <th>km당 연료비</th>
+                <th>정비 상태</th>
+                <th>상태 변경</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for v in vehicles %}
+              {% set overdue = v.overdue_maintenance() %}
+              {% set next_m  = v.next_maintenance() %}
+              <tr class="{% if overdue %}table-danger{% endif %}">
+                <td>
+                  <div class="fw-700 font-monospace">{{ v.plate }}</div>
+                  <div class="text-muted" style="font-size:.7rem;">{{ v.mileage_km|int|comma }} km</div>
+                </td>
+                <td>
+                  <div class="d-flex align-items-center gap-2">
+                    <i class="fa-solid {{ v.icon() }} text-muted"></i>
+                    <div>
+                      <div>{{ v.type_display() }}</div>
+                      <div class="text-muted" style="font-size:.7rem;">{{ v.capacity_kg|int }} kg / {{ v.capacity_m3 }} m³</div>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  {% if v.driver %}
+                    <a href="{{ url_for('driver_detail', did=v.driver.id) }}" class="fw-600 text-decoration-none">
+                      {{ v.driver.name }}
+                    </a>
+                    <div class="text-muted" style="font-size:.7rem;">{{ v.driver.phone }}</div>
+                  {% else %}
+                    <span class="text-muted small">미배정</span>
+                  {% endif %}
+                </td>
+                <td class="small text-muted">{{ v.fuel_efficiency_kmpl }} km/L</td>
+                <td class="small fw-600">₩{{ v.fuel_cost_per_km()|comma }}</td>
+                <td>
+                  {% if overdue %}
+                    <span class="badge bg-danger">
+                      <i class="fa-solid fa-triangle-exclamation me-1"></i>초과 {{ overdue }}건
+                    </span>
+                  {% elif next_m %}
+                    {% set days_left = ((next_m.scheduled_date - now).days) %}
+                    <span class="badge {% if days_left <= 3 %}bg-warning text-dark{% else %}bg-info-subtle text-info border border-info-subtle{% endif %}">
+                      <i class="fa-solid fa-calendar me-1"></i>
+                      {{ days_left }}일 후 정비
+                    </span>
+                  {% else %}
+                    <span class="badge bg-success-subtle text-success border border-success-subtle">
+                      <i class="fa-solid fa-check me-1"></i>정상
+                    </span>
+                  {% endif %}
+                </td>
+                <td>
+                  <div class="d-flex gap-1">
+                    <form method="POST" action="{{ url_for('update_vehicle_status', vid=v.id) }}" class="d-inline">
+                      <select name="status" class="form-select form-select-sm" style="width:110px;"
+                              onchange="this.form.submit()">
+                        <option value="available"   {% if v.status == 'available'   %}selected{% endif %}>가용</option>
+                        <option value="on_route"    {% if v.status == 'on_route'    %}selected{% endif %}>운행중</option>
+                        <option value="maintenance" {% if v.status == 'maintenance' %}selected{% endif %}>점검중</option>
+                      </select>
+                    </form>
+                    <button class="btn btn-sm btn-outline-secondary"
+                            data-bs-toggle="modal" data-bs-target="#maintModal{{ v.id }}">
+                      <i class="fa-solid fa-wrench"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Per-vehicle maintenance history (expandable accordions) -->
+    <div class="card mt-4">
+      <div class="card-header">
+        <h5><i class="fa-solid fa-clipboard-list me-2 text-primary"></i>차량별 정비 이력</h5>
+      </div>
+      <div class="card-body p-0">
+        <div class="accordion accordion-flush" id="maintAccordion">
           {% for v in vehicles %}
-          <tr>
-            <td class="fw-700 font-monospace">{{ v.plate }}</td>
-            <td>
-              <div class="d-flex align-items-center gap-2">
-                <i class="fa-solid {{ v.icon() }} text-muted"></i>
-                <span>{{ v.type_display() }}</span>
+          {% set records = v.maintenance_list() %}
+          {% if records %}
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed py-2" type="button"
+                      data-bs-toggle="collapse" data-bs-target="#mhist{{ v.id }}">
+                <span class="fw-600 font-monospace me-2">{{ v.plate }}</span>
+                <span class="text-muted small me-2">{{ v.type_display() }}</span>
+                {% set od = v.overdue_maintenance() %}
+                {% if od %}<span class="badge bg-danger ms-1">초과 {{ od }}건</span>{% endif %}
+                <span class="badge bg-secondary-subtle text-secondary border ms-auto me-3">{{ records|length }}건</span>
+              </button>
+            </h2>
+            <div id="mhist{{ v.id }}" class="accordion-collapse collapse">
+              <div class="accordion-body p-0">
+                <table class="table table-sm mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th class="small">정비 유형</th>
+                      <th class="small">예정일</th>
+                      <th class="small">완료일</th>
+                      <th class="small">비용</th>
+                      <th class="small">주행거리</th>
+                      <th class="small">상태</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for r in records %}
+                    <tr>
+                      <td class="small fw-600">{{ r.maintenance_type }}</td>
+                      <td class="small text-muted">{{ r.scheduled_date.strftime('%Y-%m-%d') }}</td>
+                      <td class="small text-muted">{{ r.completed_date.strftime('%Y-%m-%d') if r.completed_date else '—' }}</td>
+                      <td class="small">{% if r.cost %}₩{{ r.cost|comma }}{% else %}—{% endif %}</td>
+                      <td class="small text-muted">{% if r.mileage_km %}{{ r.mileage_km|int|comma }} km{% else %}—{% endif %}</td>
+                      <td>
+                        <span class="badge bg-{{ r.status_color() }}-subtle text-{{ r.status_color() }} border border-{{ r.status_color() }}-subtle" style="font-size:.65rem;">
+                          {{ r.status_label() }}
+                        </span>
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
               </div>
-            </td>
-            <td class="text-muted small">{{ v.capacity_kg }} kg / {{ v.capacity_m3 }} m³</td>
-            <td class="fw-500">{{ v.driver_name or '—' }}</td>
-            <td class="text-muted small">{{ v.driver_phone or '—' }}</td>
-            <td>
-              <span class="badge v-status-{{ v.status }}">
-                {% if v.status == 'available' %}<i class="fa-solid fa-circle-check me-1"></i>가용
-                {% elif v.status == 'on_route' %}<i class="fa-solid fa-route me-1"></i>운행중
-                {% else %}<i class="fa-solid fa-wrench me-1"></i>점검중{% endif %}
-              </span>
-            </td>
-            <td class="text-muted small">
-              {% if v.home_lat %}{{ "%.2f"|format(v.home_lat) }}, {{ "%.2f"|format(v.home_lng) }}{% else %}—{% endif %}
-            </td>
-            <td>
-              <form method="POST" action="{{ url_for('update_vehicle_status', vid=v.id) }}" class="d-inline">
-                <select name="status" class="form-select form-select-sm d-inline-block" style="width:130px;"
-                        onchange="this.form.submit()">
-                  {% for st in ['available','on_route','maintenance'] %}
-                  <option value="{{ st }}" {% if st == v.status %}selected{% endif %}>
-                    {{ st.replace('_',' ') | title }}
-                  </option>
-                  {% endfor %}
-                </select>
-              </form>
-            </td>
-          </tr>
+            </div>
+          </div>
+          {% endif %}
           {% endfor %}
-        </tbody>
-      </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right sidebar -->
+  <div class="col-lg-4">
+    <!-- Upcoming maintenance (14-day window) -->
+    <div class="card mb-4">
+      <div class="card-header">
+        <h6><i class="fa-solid fa-calendar-check me-2 text-primary"></i>임박 정비 일정
+          <span class="badge bg-secondary-subtle text-secondary border ms-1">14일 이내</span>
+        </h6>
+      </div>
+      <div class="card-body p-0">
+        {% if upcoming %}
+        {% for r in upcoming %}
+        {% set days_left = ((r.scheduled_date - now).days) %}
+        <div class="d-flex align-items-start gap-3 px-3 py-2" style="border-bottom:1px solid #f1f5f9;">
+          <div class="text-center" style="min-width:42px;">
+            <div class="fw-700 fs-5 {% if days_left <= 0 %}text-danger{% elif days_left <= 3 %}text-warning{% else %}text-primary{% endif %}">
+              {{ days_left if days_left > 0 else 0 }}
+            </div>
+            <div class="text-muted" style="font-size:.65rem;">일 후</div>
+          </div>
+          <div class="flex-grow-1">
+            <div class="fw-600 small">{{ r.vehicle.plate }}</div>
+            <div class="text-muted" style="font-size:.75rem;">{{ r.maintenance_type }}</div>
+            <div class="text-muted" style="font-size:.7rem;">{{ r.scheduled_date.strftime('%m/%d') }}</div>
+          </div>
+          <span class="badge bg-{{ r.status_color() }}-subtle text-{{ r.status_color() }} border border-{{ r.status_color() }}-subtle align-self-center" style="font-size:.65rem;">
+            {{ r.status_label() }}
+          </span>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="text-center text-muted py-3 small">
+          <i class="fa-solid fa-circle-check text-success me-1"></i>14일 내 예정 정비 없음
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Fleet fuel cost summary -->
+    <div class="card mb-4">
+      <div class="card-header">
+        <h6><i class="fa-solid fa-gas-pump me-2 text-warning"></i>연료 비용 요약</h6>
+      </div>
+      <div class="card-body p-0">
+        {% for v in vehicles %}
+        <div class="d-flex align-items-center gap-2 px-3 py-2" style="border-bottom:1px solid #f1f5f9;">
+          <span class="font-monospace fw-600 small" style="min-width:80px;">{{ v.plate }}</span>
+          <div class="flex-grow-1">
+            <div class="progress" style="height:6px; border-radius:4px;">
+              {% set cost_pct = [100, (v.fuel_cost_per_km() / 300 * 100)|int]|min %}
+              <div class="progress-bar bg-warning" style="width:{{ cost_pct }}%;"></div>
+            </div>
+          </div>
+          <span class="small fw-600" style="min-width:70px; text-align:right;">₩{{ v.fuel_cost_per_km()|comma }}/km</span>
+        </div>
+        {% endfor %}
+        <div class="px-3 py-2 bg-light">
+          <div class="d-flex justify-content-between small">
+            <span class="text-muted">평균 연료 비용</span>
+            {% set ns = namespace(total=0) %}
+            {% for v in vehicles %}{% set ns.total = ns.total + v.fuel_cost_per_km() %}{% endfor %}
+            {% set avg_cost = (ns.total / vehicles|length)|round(0)|int if vehicles else 0 %}
+            <span class="fw-700">₩{{ avg_cost|comma }}/km</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Vehicle type distribution chart -->
+    <div class="card">
+      <div class="card-header">
+        <h6><i class="fa-solid fa-chart-pie me-2 text-primary"></i>차량 유형 분포</h6>
+      </div>
+      <div class="card-body">
+        <div style="height:200px;"><canvas id="typeChart"></canvas></div>
+      </div>
     </div>
   </div>
 </div>
+
+<!-- Add Maintenance Modals (one per vehicle) -->
+{% for v in vehicles %}
+<div class="modal fade" id="maintModal{{ v.id }}" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="fa-solid fa-wrench me-2 text-warning"></i>정비 일정 등록
+          <span class="font-monospace ms-2 text-primary">{{ v.plate }}</span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="{{ url_for('add_maintenance', vid=v.id) }}">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-600">정비 유형 <span class="text-danger">*</span></label>
+            <select name="maintenance_type" class="form-select" required>
+              <option value="">— 유형 선택 —</option>
+              <option value="엔진 오일 교체">엔진 오일 교체</option>
+              <option value="타이어 교체">타이어 교체</option>
+              <option value="브레이크 점검">브레이크 점검</option>
+              <option value="에어 필터 교체">에어 필터 교체</option>
+              <option value="배터리 교체">배터리 교체</option>
+              <option value="냉각수 교체">냉각수 교체</option>
+              <option value="변속기 오일 교체">변속기 오일 교체</option>
+              <option value="정기 종합 점검">정기 종합 점검</option>
+              <option value="기타">기타</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600">예정일 (오늘부터 며칠 후)</label>
+            <div class="input-group">
+              <input type="number" name="scheduled_days" class="form-control" value="7" min="1" max="365">
+              <span class="input-group-text">일 후</span>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600">예상 비용 (원)</label>
+            <div class="input-group">
+              <span class="input-group-text">₩</span>
+              <input type="number" name="cost" class="form-control" placeholder="0" min="0">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600">메모</label>
+            <textarea name="notes" class="form-control" rows="2" placeholder="정비 관련 참고 사항"></textarea>
+          </div>
+          <div class="p-2 bg-light rounded small text-muted">
+            <i class="fa-solid fa-info-circle me-1"></i>
+            현재 주행거리: <strong>{{ v.mileage_km|int|comma }} km</strong>
+            &nbsp;·&nbsp; 연비: <strong>{{ v.fuel_efficiency_kmpl }} km/L</strong>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">취소</button>
+          <button type="submit" class="btn btn-warning">
+            <i class="fa-solid fa-calendar-plus me-1"></i>정비 등록
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endfor %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Vehicle type distribution doughnut chart
+const TYPE_LABELS = {
+  'truck_large': '대형 트럭', 'truck_medium': '중형 트럭',
+  'van': '밴', 'motorcycle': '오토바이', 'refrigerated': '냉동 트럭'
+};
+const typeRaw = {{ vehicles | map(attribute='type') | list | tojson }};
+const typeCounts = {};
+typeRaw.forEach(t => { typeCounts[t] = (typeCounts[t] || 0) + 1; });
+const typeLabels = Object.keys(typeCounts).map(t => TYPE_LABELS[t] || t);
+const typeValues = Object.values(typeCounts);
+
+const typeCtx = document.getElementById('typeChart').getContext('2d');
+new Chart(typeCtx, {
+  type: 'doughnut',
+  data: {
+    labels: typeLabels,
+    datasets: [{
+      data: typeValues,
+      backgroundColor: [
+        'rgba(59,130,246,.8)', 'rgba(34,197,94,.8)', 'rgba(245,158,11,.8)',
+        'rgba(168,85,247,.8)', 'rgba(239,68,68,.8)'
+      ],
+      borderWidth: 0,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    cutout: '55%',
+    plugins: {
+      legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } }
+    }
+  }
+});
+</script>
 {% endblock %}

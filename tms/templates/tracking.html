@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+{% block title %}실시간 추적 — {{ s.shipment_number }}{% endblock %}
+{% block page_title %}실시간 배송 추적{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-start">
+  <div>
+    <h1 class="font-monospace">{{ s.shipment_number }}</h1>
+    <p class="text-muted">{{ s.customer_name }} &nbsp;·&nbsp;
+      <span class="badge bg-{{ s.status|status_badge }}-subtle text-{{ s.status|status_badge }} border border-{{ s.status|status_badge }}-subtle">
+        {{ s.status|status_label }}
+      </span>
+    </p>
+  </div>
+  <a href="{{ url_for('shipment_detail', sid=s.id) }}" class="btn btn-outline-secondary">← 화물 상세</a>
+</div>
+
+<div class="row g-4">
+  <!-- Map (left) -->
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5><i class="fa-solid fa-map-location-dot me-2 text-primary"></i>실시간 위치 추적</h5>
+        <div class="d-flex align-items-center gap-2">
+          <span id="liveIndicator" class="badge bg-success d-flex align-items-center gap-1">
+            <span class="live-dot"></span>LIVE
+          </span>
+          <span class="text-muted small" id="lastUpdate">갱신 중…</span>
+        </div>
+      </div>
+      <div class="card-body p-0">
+        <div id="trackingMap" style="height:480px; border-radius:0 0 8px 8px;"></div>
+      </div>
+    </div>
+
+    <!-- Progress bar -->
+    <div class="card mt-3">
+      <div class="card-body py-3">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="small">
+            <i class="fa-solid fa-circle-dot text-primary me-1"></i>
+            <span class="text-muted">{{ s.origin_address }}</span>
+          </div>
+          <div class="small">
+            <span class="text-muted">{{ s.destination_address }}</span>
+            <i class="fa-solid fa-flag-checkered text-success ms-1"></i>
+          </div>
+        </div>
+        <div class="progress" style="height:12px; border-radius:8px;">
+          <div id="routeProgress" class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
+               style="width:0%; transition: width 1s ease;"></div>
+        </div>
+        <div class="d-flex justify-content-between mt-2 small text-muted">
+          <span id="elapsedKm">— km 이동</span>
+          <span id="progressPct">0%</span>
+          <span id="remainingKm">— km 남음</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right panel -->
+  <div class="col-lg-4">
+    <!-- Status card -->
+    <div class="card mb-3">
+      <div class="card-header"><h6><i class="fa-solid fa-satellite-dish me-2"></i>현재 상태</h6></div>
+      <div class="card-body">
+        <div class="text-center mb-3">
+          <div class="fs-2" id="statusIcon"><i class="fa-solid fa-truck-fast text-primary"></i></div>
+          <div class="fw-700 fs-6 mt-1" id="statusText">추적 중…</div>
+          <div class="small text-muted mt-1" id="currentLocation">—</div>
+        </div>
+        <hr class="my-2"/>
+        <div class="row g-2 text-center">
+          <div class="col-6">
+            <div class="small text-muted">예상 도착</div>
+            <div class="fw-700" id="etaDisplay">—</div>
+          </div>
+          <div class="col-6">
+            <div class="small text-muted">총 거리</div>
+            <div class="fw-700" id="totalKm">— km</div>
+          </div>
+          {% if s.dispatch %}
+          <div class="col-6">
+            <div class="small text-muted">차량</div>
+            <div class="fw-600 small">{{ s.dispatch.vehicle.plate }}</div>
+          </div>
+          <div class="col-6">
+            <div class="small text-muted">기사</div>
+            <div class="fw-600 small">{{ s.dispatch.vehicle.driver_name }}</div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Route stops -->
+    <div class="card mb-3">
+      <div class="card-header"><h6><i class="fa-solid fa-route me-2"></i>경로</h6></div>
+      <div class="card-body p-0">
+        {% set route = s.all_stops() %}
+        {% for stop in route %}
+        <div class="d-flex align-items-start gap-2 px-3 py-2" style="border-bottom:1px solid #f1f5f9;">
+          {% if loop.first %}
+            <i class="fa-solid fa-circle-dot text-primary mt-1 flex-shrink-0"></i>
+          {% elif loop.last %}
+            <i class="fa-solid fa-flag-checkered text-success mt-1 flex-shrink-0"></i>
+          {% else %}
+            <i class="fa-solid fa-location-dot text-warning mt-1 flex-shrink-0"></i>
+          {% endif %}
+          <div>
+            <div class="small fw-600">
+              {% if loop.first %}출발지
+              {% elif loop.last %}목적지
+              {% else %}경유 {{ loop.index - 1 }}{% endif %}
+            </div>
+            <div class="text-muted" style="font-size:.75rem;">{{ stop.address }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Shipment info -->
+    <div class="card">
+      <div class="card-header"><h6><i class="fa-solid fa-box me-2"></i>화물 정보</h6></div>
+      <div class="card-body">
+        <dl class="mb-0 row g-1">
+          <dt class="col-5 text-muted small">고객</dt>
+          <dd class="col-7 small mb-1">{{ s.customer_name }}</dd>
+          <dt class="col-5 text-muted small">우선순위</dt>
+          <dd class="col-7 mb-1">
+            <span class="badge bg-{{ s.priority|priority_badge }}-subtle text-{{ s.priority|priority_badge }} border border-{{ s.priority|priority_badge }}-subtle">
+              {{ s.priority|priority_label }}
+            </span>
+          </dd>
+          <dt class="col-5 text-muted small">중량</dt>
+          <dd class="col-7 small mb-1">{{ s.weight_kg }} kg</dd>
+          <dt class="col-5 text-muted small">부피</dt>
+          <dd class="col-7 small mb-1">{{ s.volume_m3 }} m³</dd>
+          <dt class="col-5 text-muted small">예상 납기</dt>
+          <dd class="col-7 small mb-0">
+            {{ s.estimated_delivery.strftime('%m/%d %H:%M') if s.estimated_delivery else '—' }}
+          </dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.live-dot {
+  display:inline-block; width:8px; height:8px; border-radius:50%;
+  background:#fff; animation:pulse 1.2s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+</style>
+<script>
+const shipmentId = {{ s.id }};
+const routeData  = {{ route | safe }};
+const isDelivered = {{ 'true' if s.status == 'delivered' else 'false' }};
+
+// ── Map setup ────────────────────────────────────────────────────────────────
+const map = L.map('trackingMap', { zoomControl: true });
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap contributors'
+}).addTo(map);
+
+// Draw route polyline
+const routeCoords = routeData.map(s => [s.lat, s.lng]);
+const routeLine = L.polyline(routeCoords, { color: '#3b82f6', weight: 4, opacity: 0.7 }).addTo(map);
+map.fitBounds(routeLine.getBounds(), { padding: [40, 40] });
+
+// Origin / destination markers
+const originIcon = L.divIcon({
+  html: '<div style="background:#22c55e;width:14px;height:14px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.3);"></div>',
+  iconSize: [14,14], iconAnchor: [7,7], className: ''
+});
+const destIcon = L.divIcon({
+  html: '<div style="background:#ef4444;width:14px;height:14px;border-radius:50%;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.3);"></div>',
+  iconSize: [14,14], iconAnchor: [7,7], className: ''
+});
+L.marker([routeData[0].lat, routeData[0].lng], {icon: originIcon})
+  .bindPopup(`<b>출발지</b><br>${routeData[0].address}`).addTo(map);
+L.marker([routeData[routeData.length-1].lat, routeData[routeData.length-1].lng], {icon: destIcon})
+  .bindPopup(`<b>목적지</b><br>${routeData[routeData.length-1].address}`).addTo(map);
+
+// Waypoint markers
+routeData.slice(1, -1).forEach((s, i) => {
+  const wIcon = L.divIcon({
+    html: `<div style="background:#f59e0b;width:12px;height:12px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3);"></div>`,
+    iconSize: [12,12], iconAnchor: [6,6], className: ''
+  });
+  L.marker([s.lat, s.lng], {icon: wIcon})
+    .bindPopup(`<b>경유 ${i+1}</b><br>${s.address}`).addTo(map);
+});
+
+// Vehicle marker (moving truck)
+const truckIcon = L.divIcon({
+  html: '<div class="truck-marker"><i class="fa-solid fa-truck-fast" style="color:#fff;font-size:14px;"></i></div>',
+  iconSize: [36, 36], iconAnchor: [18, 18], className: ''
+});
+let vehicleMarker = L.marker(
+  [routeData[0].lat, routeData[0].lng],
+  { icon: truckIcon, zIndexOffset: 1000 }
+).addTo(map);
+
+// Traveled path
+let traveledLine = L.polyline([], { color: '#22c55e', weight: 4, opacity: 0.9 }).addTo(map);
+
+// Status labels
+const statusLabels = {
+  departing:  { icon: '🚀', text: '출발 준비 중' },
+  in_transit: { icon: '🚛', text: '운송 중' },
+  arriving:   { icon: '🏁', text: '목적지 도착 임박' },
+  delivered:  { icon: '✅', text: '배달 완료' },
+  pending:    { icon: '⏳', text: '대기 중' },
+  dispatched: { icon: '📋', text: '배차됨' },
+};
+
+function updateTracking() {
+  fetch(`/api/tracking-position/${shipmentId}`)
+    .then(r => r.json())
+    .then(data => {
+      const now = new Date().toLocaleTimeString('ko-KR');
+      document.getElementById('lastUpdate').textContent = `${now} 갱신`;
+
+      if (!data.lat) return;
+
+      // Move vehicle marker
+      vehicleMarker.setLatLng([data.lat, data.lng]);
+
+      // Update traveled path
+      if (data.route && data.elapsed_km > 0) {
+        const pct = data.progress / 100;
+        const routePts = data.route;
+        const travelIdx = Math.floor(pct * (routePts.length - 1));
+        const travelPts = routePts.slice(0, travelIdx + 1);
+        travelPts.push([data.lat, data.lng]);
+        traveledLine.setLatLngs(travelPts);
+      }
+
+      // Progress bar
+      document.getElementById('routeProgress').style.width = `${data.progress}%`;
+      document.getElementById('progressPct').textContent  = `${data.progress}%`;
+      document.getElementById('elapsedKm').textContent    = `${data.elapsed_km} km 이동`;
+      document.getElementById('remainingKm').textContent  = `${data.remaining_km} km 남음`;
+      document.getElementById('totalKm').textContent      = `${data.total_km} km`;
+
+      // Status panel
+      const sl = statusLabels[data.status] || statusLabels['in_transit'];
+      document.getElementById('statusIcon').innerHTML =
+        `<span style="font-size:2rem;">${sl.icon}</span>`;
+      document.getElementById('statusText').textContent = sl.text;
+      document.getElementById('currentLocation').textContent = data.current_location || '—';
+
+      // ETA
+      if (data.eta_minutes > 0) {
+        document.getElementById('etaDisplay').textContent =
+          data.eta_minutes >= 60
+          ? `${Math.floor(data.eta_minutes/60)}시간 ${data.eta_minutes%60}분`
+          : `${data.eta_minutes}분`;
+      } else if (data.status === 'delivered') {
+        document.getElementById('etaDisplay').textContent = '배달 완료';
+        document.getElementById('liveIndicator').className = 'badge bg-success';
+        document.getElementById('liveIndicator').innerHTML = '✓ 완료';
+      }
+
+      // Vehicle popup
+      if (data.vehicle && data.vehicle.plate) {
+        vehicleMarker.bindPopup(
+          `<b>${data.vehicle.driver}</b><br>${data.vehicle.type} ${data.vehicle.plate}<br>진행률: ${data.progress}%`
+        );
+      }
+    })
+    .catch(console.error);
+}
+
+// Initial load + poll every 30 seconds
+updateTracking();
+if (!isDelivered) {
+  setInterval(updateTracking, 30000);
+}
+</style>
+<style>
+.truck-marker {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  border-radius: 50%; width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 3px 8px rgba(59,130,246,.5);
+  border: 2px solid #fff;
+}
+</style>
+{% endblock %}

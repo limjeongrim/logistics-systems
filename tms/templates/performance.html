@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+{% block title %}성과 / KPI{% endblock %}
+{% block page_title %}배송 성과 대시보드{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>성과 / KPI 대시보드</h1>
+  <p>정시 배달율 · SLA 준수율 · 기사 성과 · 지역별 배달 시간 · 월별 추세</p>
+</div>
+
+<!-- KPI Summary row -->
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-lg-3">
+    <div class="kpi-card" style="border-left:4px solid #22c55e;">
+      <div class="kpi-icon bg-success-subtle"><i class="fa-solid fa-circle-check text-success"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-label">정시 배달율</div>
+        <div class="kpi-value text-success">{{ on_time_pct }}%</div>
+        <div class="small text-muted">{{ total_delivered }}건 완료</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="kpi-card" style="border-left:4px solid #3b82f6;">
+      <div class="kpi-icon bg-primary-subtle"><i class="fa-solid fa-clock text-primary"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-label">평균 배달 시간</div>
+        <div class="kpi-value text-primary">{{ avg_delivery_h }}h</div>
+        <div class="small text-muted">접수→배달 완료</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="kpi-card" style="border-left:4px solid #f59e0b;">
+      <div class="kpi-icon bg-warning-subtle"><i class="fa-solid fa-won-sign text-warning"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-label">총 운임 수익</div>
+        <div class="kpi-value" style="font-size:1.3rem;">₩{{ (total_revenue/1000000)|round(1) }}M</div>
+        <div class="small text-muted">{{ total_shipments }}건 전체</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="kpi-card" style="border-left:4px solid #a855f7;">
+      <div class="kpi-icon bg-purple-subtle"><i class="fa-solid fa-gas-pump" style="color:#a855f7;"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-label">총 연료 비용</div>
+        <div class="kpi-value" style="font-size:1.3rem; color:#a855f7;">₩{{ (total_fuel_cost/1000)|round(0)|int }}K</div>
+        <div class="small text-muted">리터당 ₩1,650</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mb-4">
+  <!-- Monthly trend chart -->
+  <div class="col-lg-7">
+    <div class="card h-100">
+      <div class="card-header">
+        <h5><i class="fa-solid fa-chart-line me-2 text-primary"></i>월별 배송 추세</h5>
+      </div>
+      <div class="card-body">
+        <div style="height:260px;"><canvas id="monthlyChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLA compliance by priority -->
+  <div class="col-lg-5">
+    <div class="card h-100">
+      <div class="card-header">
+        <h5><i class="fa-solid fa-shield-halved me-2 text-primary"></i>SLA 준수율</h5>
+      </div>
+      <div class="card-body">
+        {% set sla_labels = {'urgent': ('긴급', '24시간 이내', 'danger'), 'express': ('특급', '36시간 이내', 'warning'), 'standard': ('일반', '72시간 이내', 'secondary')} %}
+        {% for pri, (label, deadline, color) in sla_labels.items() %}
+        {% set sla = sla_data.get(pri, {}) %}
+        <div class="mb-4">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <div>
+              <span class="badge bg-{{ color }}-subtle text-{{ color }} border border-{{ color }}-subtle me-2">{{ label }}</span>
+              <span class="small text-muted">{{ deadline }}</span>
+            </div>
+            <div class="fw-700 {% if sla.rate >= 90 %}text-success{% elif sla.rate >= 75 %}text-warning{% else %}text-danger{% endif %}">
+              {{ sla.rate }}%
+            </div>
+          </div>
+          <div class="progress" style="height:10px; border-radius:6px;">
+            <div class="progress-bar {% if sla.rate >= 90 %}bg-success{% elif sla.rate >= 75 %}bg-warning{% else %}bg-danger{% endif %}"
+                 style="width:{{ sla.rate }}%;"></div>
+          </div>
+          <div class="small text-muted mt-1">{{ sla.compliant }}/{{ sla.total }}건 준수</div>
+        </div>
+        {% endfor %}
+
+        <!-- On-time gauge -->
+        <div class="text-center mt-2 pt-2 border-top">
+          <div class="small text-muted mb-1">전체 정시 배달율</div>
+          <div class="fw-700 fs-1 {% if on_time_pct >= 90 %}text-success{% elif on_time_pct >= 75 %}text-warning{% else %}text-danger{% endif %}">
+            {{ on_time_pct }}%
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mb-4">
+  <!-- Regional delivery time -->
+  <div class="col-lg-5">
+    <div class="card h-100">
+      <div class="card-header">
+        <h5><i class="fa-solid fa-map-location-dot me-2 text-primary"></i>지역별 평균 배달 시간</h5>
+      </div>
+      <div class="card-body">
+        {% for region, avg_h in region_sorted %}
+        <div class="mb-3">
+          <div class="d-flex justify-content-between mb-1">
+            <span class="small fw-600">{{ region }}</span>
+            <span class="small text-muted">{{ avg_h }}시간</span>
+          </div>
+          {% set pct = [100, (avg_h / 50 * 100)|int]|min %}
+          <div class="progress" style="height:8px; border-radius:4px;">
+            <div class="progress-bar {% if avg_h <= 24 %}bg-success{% elif avg_h <= 48 %}bg-warning{% else %}bg-danger{% endif %}"
+                 style="width:{{ pct }}%;"></div>
+          </div>
+        </div>
+        {% else %}
+        <div class="text-muted text-center py-3 small">데이터 없음</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Driver ranking -->
+  <div class="col-lg-7">
+    <div class="card h-100">
+      <div class="card-header">
+        <h5><i class="fa-solid fa-ranking-star me-2 text-primary"></i>기사 성과 순위</h5>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table mb-0">
+            <thead>
+              <tr>
+                <th>순위</th>
+                <th>기사</th>
+                <th>정시율</th>
+                <th>총 배달</th>
+                <th>운행 시간</th>
+                <th>성과 점수</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for d in driver_ranking %}
+              <tr>
+                <td class="fw-700 text-center">
+                  {% if loop.index == 1 %}🥇
+                  {% elif loop.index == 2 %}🥈
+                  {% elif loop.index == 3 %}🥉
+                  {% else %}<span class="text-muted">{{ loop.index }}</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <a href="{{ url_for('driver_detail', did=d.id) }}" class="fw-600 text-decoration-none">{{ d.name }}</a>
+                  {% if d.is_over_hours() %}
+                    <span class="badge bg-danger ms-1" style="font-size:.6rem;">초과</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <span class="badge {% if d.on_time_rate() >= 90 %}bg-success-subtle text-success{% elif d.on_time_rate() >= 75 %}bg-warning-subtle text-warning{% else %}bg-danger-subtle text-danger{% endif %}">
+                    {{ d.on_time_rate() }}%
+                  </span>
+                </td>
+                <td class="fw-600">{{ d.total_deliveries }}</td>
+                <td class="small {% if d.is_over_hours() %}text-danger fw-700{% else %}text-muted{% endif %}">
+                  {{ d.working_hours_today }}h
+                </td>
+                <td>
+                  <div class="d-flex align-items-center gap-2">
+                    <div class="progress flex-grow-1" style="height:6px; max-width:70px;">
+                      <div class="progress-bar bg-primary" style="width:{{ d.performance_score() }}%;"></div>
+                    </div>
+                    <span class="fw-700 small text-primary">{{ d.performance_score() }}</span>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- On-time rate chart -->
+<div class="card">
+  <div class="card-header">
+    <h5><i class="fa-solid fa-chart-bar me-2 text-primary"></i>월별 정시 배달율 추세</h5>
+  </div>
+  <div class="card-body">
+    <div style="height:240px;"><canvas id="onTimeChart"></canvas></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const md = {{ monthly_json | safe }};
+const months = md.map(d => d.month);
+
+// Monthly trend
+const mCtx = document.getElementById('monthlyChart').getContext('2d');
+new Chart(mCtx, {
+  type: 'bar',
+  data: {
+    labels: months,
+    datasets: [
+      { label: '전체 건수', data: md.map(d => d.total), backgroundColor: 'rgba(59,130,246,.6)', borderRadius: 4 },
+      { label: '배달 완료', data: md.map(d => d.delivered), backgroundColor: 'rgba(34,197,94,.6)', borderRadius: 4 },
+      {
+        label: '정시율 (%)', data: md.map(d => d.on_time_rate),
+        type: 'line', borderColor: '#f59e0b', backgroundColor: 'transparent',
+        borderWidth: 2, pointRadius: 4, tension: 0.3, yAxisID: 'y2'
+      }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'top', labels: { font: { size: 11 }, boxWidth: 12 } } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+      y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { size: 10 } } },
+      y2: {
+        position: 'right', min: 0, max: 100, grid: { display: false },
+        ticks: { font: { size: 10 }, callback: v => v + '%' }
+      }
+    }
+  }
+});
+
+// On-time rate trend
+const otCtx = document.getElementById('onTimeChart').getContext('2d');
+new Chart(otCtx, {
+  type: 'line',
+  data: {
+    labels: months,
+    datasets: [{
+      label: '정시 배달율 (%)',
+      data: md.map(d => d.on_time_rate),
+      borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,.1)',
+      borderWidth: 2.5, pointRadius: 5, fill: true, tension: 0.4,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+      y: {
+        min: 0, max: 100, grid: { color: '#f1f5f9' },
+        ticks: { font: { size: 11 }, callback: v => v + '%' }
+      }
+    }
+  }
+});
+</script>
+{% endblock %}

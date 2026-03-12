@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+{% block title %}기사 관리{% endblock %}
+{% block page_title %}기사 관리{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>기사 관리</h1>
+  <p>근무 현황, 운행 시간, 성과 지표를 실시간 모니터링합니다.</p>
+</div>
+
+<!-- Alerts for over-hours drivers -->
+{% if over_hours %}
+<div class="alert alert-danger mb-4">
+  <i class="fa-solid fa-triangle-exclamation me-2"></i>
+  <strong>근무 시간 초과 경고:</strong>
+  {% for d in over_hours %}
+    <strong>{{ d.name }}</strong> ({{ d.working_hours_today }}시간){% if not loop.last %}, {% endif %}
+  {% endfor %}
+  — 8시간 근무 한도 초과. 즉시 교대 또는 휴식이 필요합니다.
+</div>
+{% endif %}
+
+<!-- KPI cards -->
+<div class="row g-3 mb-4">
+  <div class="col-sm-3">
+    <div class="kpi-card">
+      <div class="kpi-icon bg-primary-subtle"><i class="fa-solid fa-id-card text-primary"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-label">전체 기사</div>
+        <div class="kpi-value">{{ drivers|length }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-3">
+    <div class="kpi-card">
+      <div class="kpi-icon bg-success-subtle"><i class="fa-solid fa-circle-play text-success"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-label">근무중</div>
+        <div class="kpi-value text-success">{{ drivers|selectattr('status','eq','active')|list|length }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-3">
+    <div class="kpi-card">
+      <div class="kpi-icon bg-danger-subtle"><i class="fa-solid fa-clock text-danger"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-label">시간 초과</div>
+        <div class="kpi-value text-danger">{{ over_hours|length }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-3">
+    <div class="kpi-card">
+      <div class="kpi-icon bg-warning-subtle"><i class="fa-solid fa-star text-warning"></i></div>
+      <div class="kpi-body">
+        <div class="kpi-label">평균 정시 배달률</div>
+        <div class="kpi-value">
+          {% if drivers %}
+            {{ "%.0f"|format(drivers|map(attribute='on_time_rate')|map('float')|sum / drivers|length) }}%
+          {% else %}—{% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Driver table -->
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header">
+        <h5><i class="fa-solid fa-table me-2 text-primary"></i>기사 현황</h5>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table mb-0">
+            <thead>
+              <tr>
+                <th>기사</th>
+                <th>면허</th>
+                <th>배정 차량</th>
+                <th>오늘 운행</th>
+                <th>총 배달</th>
+                <th>정시율</th>
+                <th>성과점수</th>
+                <th>상태</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for d in drivers %}
+              <tr class="{% if d.is_over_hours() %}table-danger{% endif %}">
+                <td>
+                  <a href="{{ url_for('driver_detail', did=d.id) }}" class="fw-600 text-decoration-none">
+                    {{ d.name }}
+                  </a>
+                  {% if d.is_over_hours() %}
+                    <span class="badge bg-danger ms-1" style="font-size:.6rem;">초과</span>
+                  {% endif %}
+                  <div class="small text-muted">{{ d.phone }}</div>
+                </td>
+                <td class="small text-muted">{{ d.license_class }}</td>
+                <td>
+                  {% if d.vehicle %}
+                    <span class="font-monospace small fw-600">{{ d.vehicle.plate }}</span>
+                    <div class="text-muted" style="font-size:.7rem;">{{ d.vehicle.type_display() }}</div>
+                  {% else %}
+                    <span class="text-muted small">미배정</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% set h = d.working_hours_today %}
+                  <div class="d-flex align-items-center gap-2">
+                    <div class="progress flex-grow-1" style="height:6px; max-width:80px;">
+                      {% set pct = [100, (h / 8 * 100)|int]|min %}
+                      <div class="progress-bar {% if h > 8 %}bg-danger{% elif h > 6 %}bg-warning{% else %}bg-success{% endif %}"
+                           style="width:{{ pct }}%;"></div>
+                    </div>
+                    <span class="small fw-600 {% if h > 8 %}text-danger{% endif %}">{{ h }}h</span>
+                  </div>
+                </td>
+                <td class="fw-600">{{ d.total_deliveries }}</td>
+                <td>
+                  <span class="badge {% if d.on_time_rate() >= 90 %}bg-success-subtle text-success{% elif d.on_time_rate() >= 75 %}bg-warning-subtle text-warning{% else %}bg-danger-subtle text-danger{% endif %}">
+                    {{ d.on_time_rate() }}%
+                  </span>
+                </td>
+                <td>
+                  <div class="d-flex align-items-center gap-1">
+                    <div class="progress flex-grow-1" style="height:6px; max-width:60px;">
+                      <div class="progress-bar bg-primary" style="width:{{ d.performance_score() }}%;"></div>
+                    </div>
+                    <span class="small fw-600">{{ d.performance_score() }}</span>
+                  </div>
+                </td>
+                <td>
+                  <span class="badge {% if d.status == 'active' %}bg-success-subtle text-success{% elif d.status == 'off_duty' %}bg-secondary-subtle text-secondary{% else %}bg-warning-subtle text-warning{% endif %} border">
+                    {{ d.status_label() }}
+                  </span>
+                </td>
+                <td>
+                  <a href="{{ url_for('driver_detail', did=d.id) }}" class="btn btn-sm btn-outline-secondary">
+                    상세 <i class="fa-solid fa-chevron-right small ms-1"></i>
+                  </a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Performance ranking -->
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header"><h6><i class="fa-solid fa-trophy me-2 text-warning"></i>성과 순위</h6></div>
+      <div class="card-body p-0">
+        {% for d in ranked %}
+        <div class="d-flex align-items-center gap-3 px-3 py-2" style="border-bottom:1px solid #f1f5f9;">
+          <div class="fw-700 text-{% if loop.index == 1 %}warning{% elif loop.index == 2 %}secondary{% elif loop.index == 3 %}danger{% else %}muted{% endif %}"
+               style="width:24px; font-size:{% if loop.index <= 3 %}1.1rem{% else %}.9rem{% endif %};">
+            {% if loop.index == 1 %}🥇{% elif loop.index == 2 %}🥈{% elif loop.index == 3 %}🥉{% else %}{{ loop.index }}{% endif %}
+          </div>
+          <div class="flex-grow-1">
+            <div class="fw-600 small">{{ d.name }}</div>
+            <div class="text-muted" style="font-size:.7rem;">배달 {{ d.total_deliveries }}건 · 정시율 {{ d.on_time_rate() }}%</div>
+          </div>
+          <div class="text-end">
+            <div class="fw-700 small text-primary">{{ d.performance_score() }}점</div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Working hours chart -->
+    <div class="card mt-3">
+      <div class="card-header"><h6><i class="fa-solid fa-clock me-2"></i>오늘 운행 시간</h6></div>
+      <div class="card-body">
+        <div style="height:220px;">
+          <canvas id="hoursChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const driverNames  = {{ drivers|map(attribute='name')|list|tojson }};
+const driverHours  = {{ drivers|map(attribute='working_hours_today')|list|tojson }};
+const hoursCtx = document.getElementById('hoursChart').getContext('2d');
+new Chart(hoursCtx, {
+  type: 'bar',
+  data: {
+    labels: driverNames,
+    datasets: [{
+      label: '운행 시간 (h)',
+      data: driverHours,
+      backgroundColor: driverHours.map(h => h > 8 ? 'rgba(239,68,68,.7)' : h > 6 ? 'rgba(245,158,11,.7)' : 'rgba(34,197,94,.7)'),
+      borderRadius: 4,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { ticks: { font: { size: 10 } }, grid: { display: false } },
+      y: {
+        beginAtZero: true, max: 12,
+        ticks: { font: { size: 10 } },
+        grid: {
+          color: ctx => Math.abs(ctx.tick.value - 8) < 0.01 ? 'rgba(239,68,68,.5)' : '#f1f5f9'
+        }
+      }
+    }
+  }
+});
+</script>
+{% endblock %}

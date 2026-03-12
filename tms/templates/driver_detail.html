@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+{% block title %}{{ driver.name }}{% endblock %}
+{% block page_title %}기사 상세{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-start">
+  <div>
+    <h1>{{ driver.name }}</h1>
+    <p class="text-muted">
+      {{ driver.license_class }} &nbsp;·&nbsp;
+      <span class="badge {% if driver.status == 'active' %}bg-success-subtle text-success{% else %}bg-secondary-subtle text-secondary{% endif %} border">
+        {{ driver.status_label() }}
+      </span>
+      {% if driver.is_over_hours() %}
+        <span class="badge bg-danger ms-1">⚠ 운행 시간 초과</span>
+      {% endif %}
+    </p>
+  </div>
+  <a href="{{ url_for('drivers') }}" class="btn btn-outline-secondary">← 기사 목록</a>
+</div>
+
+<div class="row g-4">
+  <!-- Left: Info -->
+  <div class="col-lg-4">
+    <!-- Profile card -->
+    <div class="card mb-3">
+      <div class="card-body text-center py-4">
+        <div class="rounded-circle bg-primary-subtle d-inline-flex align-items-center justify-content-center mb-3"
+             style="width:80px;height:80px;">
+          <i class="fa-solid fa-user text-primary" style="font-size:2rem;"></i>
+        </div>
+        <h5 class="mb-0">{{ driver.name }}</h5>
+        <div class="text-muted small mb-3">{{ driver.license_class }} · {{ driver.license_number }}</div>
+        <div class="row g-2">
+          <div class="col-4 text-center">
+            <div class="small text-muted">성과점수</div>
+            <div class="fw-700 fs-5 text-primary">{{ driver.performance_score() }}</div>
+          </div>
+          <div class="col-4 text-center">
+            <div class="small text-muted">정시율</div>
+            <div class="fw-700 fs-5 {% if driver.on_time_rate() >= 90 %}text-success{% elif driver.on_time_rate() >= 75 %}text-warning{% else %}text-danger{% endif %}">
+              {{ driver.on_time_rate() }}%
+            </div>
+          </div>
+          <div class="col-4 text-center">
+            <div class="small text-muted">총 배달</div>
+            <div class="fw-700 fs-5">{{ driver.total_deliveries }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Contact -->
+    <div class="card mb-3">
+      <div class="card-header"><h6><i class="fa-solid fa-address-book me-2"></i>연락처</h6></div>
+      <div class="card-body">
+        <dl class="mb-0">
+          <dt class="text-muted small">전화</dt><dd class="mb-2">{{ driver.phone or '—' }}</dd>
+          <dt class="text-muted small">이메일</dt><dd class="mb-2">{{ driver.email or '—' }}</dd>
+          <dt class="text-muted small">입사일</dt>
+          <dd class="mb-0 small text-muted">{{ driver.joined_at.strftime('%Y-%m-%d') if driver.joined_at else '—' }}</dd>
+        </dl>
+      </div>
+    </div>
+
+    <!-- Vehicle info -->
+    <div class="card mb-3">
+      <div class="card-header"><h6><i class="fa-solid fa-truck me-2"></i>배정 차량</h6></div>
+      <div class="card-body">
+        {% if driver.vehicle %}
+        <dl class="mb-0">
+          <dt class="text-muted small">차량 번호</dt>
+          <dd class="mb-2 fw-700 font-monospace">{{ driver.vehicle.plate }}</dd>
+          <dt class="text-muted small">차량 유형</dt>
+          <dd class="mb-2">{{ driver.vehicle.type_display() }}</dd>
+          <dt class="text-muted small">적재량</dt>
+          <dd class="mb-2">{{ driver.vehicle.capacity_kg|int }} kg / {{ driver.vehicle.capacity_m3 }} m³</dd>
+          <dt class="text-muted small">연비</dt>
+          <dd class="mb-2">{{ driver.vehicle.fuel_efficiency_kmpl }} km/L</dd>
+          <dt class="text-muted small">km당 연료비</dt>
+          <dd class="mb-0">₩{{ driver.vehicle.fuel_cost_per_km()|comma }}</dd>
+        </dl>
+        {% else %}
+        <div class="text-muted small text-center py-2">배정된 차량 없음</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Working hours today -->
+    <div class="card">
+      <div class="card-header"><h6><i class="fa-solid fa-clock me-2"></i>오늘 운행 시간</h6></div>
+      <div class="card-body">
+        <div class="d-flex justify-content-between mb-2">
+          <span class="fw-700 fs-4 {% if driver.is_over_hours() %}text-danger{% endif %}">
+            {{ driver.working_hours_today }}시간
+          </span>
+          <span class="text-muted small">한도: 8시간</span>
+        </div>
+        {% set h_pct = [100, (driver.working_hours_today / 8 * 100)|int]|min %}
+        <div class="progress" style="height:12px; border-radius:8px;">
+          <div class="progress-bar {% if driver.working_hours_today > 8 %}bg-danger{% elif driver.working_hours_today > 6 %}bg-warning{% else %}bg-success{% endif %}"
+               style="width:{{ h_pct }}%;"></div>
+        </div>
+        {% if driver.is_over_hours() %}
+        <div class="text-danger small mt-2">
+          <i class="fa-solid fa-triangle-exclamation me-1"></i>
+          법정 운행 한도 초과 — 즉시 휴식 필요
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Dispatch history -->
+  <div class="col-lg-8">
+    <!-- Performance chart -->
+    <div class="card mb-4">
+      <div class="card-header"><h6><i class="fa-solid fa-chart-pie me-2"></i>성과 개요</h6></div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-4 text-center">
+            <div style="height:150px;"><canvas id="onTimeChart"></canvas></div>
+          </div>
+          <div class="col-md-8">
+            <div class="row g-3 mt-1">
+              <div class="col-6">
+                <div class="p-3 bg-light rounded text-center">
+                  <div class="small text-muted">정시 배달</div>
+                  <div class="fw-700 fs-4 text-success">{{ driver.on_time_deliveries }}</div>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="p-3 bg-light rounded text-center">
+                  <div class="small text-muted">지연 배달</div>
+                  <div class="fw-700 fs-4 text-danger">{{ driver.total_deliveries - driver.on_time_deliveries }}</div>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="p-3 bg-light rounded text-center">
+                  <div class="small text-muted">총 배달</div>
+                  <div class="fw-700 fs-4">{{ driver.total_deliveries }}</div>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="p-3 bg-light rounded text-center">
+                  <div class="small text-muted">성과 점수</div>
+                  <div class="fw-700 fs-4 text-primary">{{ driver.performance_score() }}점</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent dispatches -->
+    <div class="card">
+      <div class="card-header"><h6><i class="fa-solid fa-history me-2"></i>최근 운행 이력</h6></div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table mb-0">
+            <thead>
+              <tr>
+                <th>화물번호</th>
+                <th>고객</th>
+                <th>구간</th>
+                <th>거리</th>
+                <th>상태</th>
+                <th>배차일</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for d in recent_shipments %}
+              {% set s = d.shipment %}
+              <tr>
+                <td class="font-monospace small fw-600">{{ s.shipment_number }}</td>
+                <td class="small">{{ s.customer_name }}</td>
+                <td class="small text-muted">
+                  {{ s.origin_address.split(' ')[0] }} → {{ s.destination_address.split(' ')[0] }}
+                </td>
+                <td class="small">{{ s.distance_km }} km</td>
+                <td>
+                  <span class="badge bg-{{ s.status|status_badge }}-subtle text-{{ s.status|status_badge }} border border-{{ s.status|status_badge }}-subtle">
+                    {{ s.status|status_label }}
+                  </span>
+                </td>
+                <td class="small text-muted">{{ d.assigned_at.strftime('%m/%d %H:%M') }}</td>
+                <td>
+                  <a href="{{ url_for('shipment_detail', sid=s.id) }}" class="btn btn-sm btn-outline-secondary">보기</a>
+                </td>
+              </tr>
+              {% else %}
+              <tr><td colspan="7" class="text-center text-muted py-3">운행 이력 없음</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const onTimeCtx = document.getElementById('onTimeChart').getContext('2d');
+new Chart(onTimeCtx, {
+  type: 'doughnut',
+  data: {
+    labels: ['정시', '지연'],
+    datasets: [{
+      data: [{{ driver.on_time_deliveries }}, {{ driver.total_deliveries - driver.on_time_deliveries }}],
+      backgroundColor: ['rgba(34,197,94,.8)', 'rgba(239,68,68,.6)'],
+      borderWidth: 0,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    cutout: '65%',
+    plugins: {
+      legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } },
+      tooltip: {
+        callbacks: { label: i => ` ${i.label}: ${i.raw}건 (${(i.raw/{{ driver.total_deliveries or 1 }}*100).toFixed(1)}%)` }
+      }
+    }
+  }
+});
+</script>
+{% endblock %}

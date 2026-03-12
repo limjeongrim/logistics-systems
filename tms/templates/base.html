@@ -42,19 +42,31 @@
       </a>
     </li>
     <li>
+      <a href="{{ url_for('drivers') }}"
+         class="nav-link {% if request.endpoint in ['drivers','driver_detail'] %}active{% endif %}">
+        <i class="fa-solid fa-id-card"></i><span>기사 관리</span>
+      </a>
+    </li>
+    <li>
       <a href="{{ url_for('vehicles') }}"
          class="nav-link {% if request.endpoint in ['vehicles','new_vehicle'] %}active{% endif %}">
-        <i class="fa-solid fa-truck"></i><span>차량</span>
+        <i class="fa-solid fa-truck"></i><span>차량 / 정비</span>
       </a>
     </li>
     <li>
       <a href="{{ url_for('routes_view') }}"
          class="nav-link {% if request.endpoint == 'routes_view' %}active{% endif %}">
-        <i class="fa-solid fa-route"></i><span>노선 &amp; 최적화</span>
+        <i class="fa-solid fa-route"></i><span>노선 최적화</span>
       </a>
     </li>
 
     <li class="nav-label">분석</li>
+    <li>
+      <a href="{{ url_for('performance') }}"
+         class="nav-link {% if request.endpoint == 'performance' %}active{% endif %}">
+        <i class="fa-solid fa-chart-line"></i><span>성과 / KPI</span>
+      </a>
+    </li>
     <li>
       <a href="{{ url_for('reports') }}"
          class="nav-link {% if request.endpoint == 'reports' %}active{% endif %}">
@@ -63,7 +75,7 @@
     </li>
   </ul>
   <div class="sidebar-footer">
-    <small>v1.0 &mdash; LogiTMS &mdash; Port 5001</small>
+    <small>v2.0 &mdash; LogiTMS &mdash; Port 5001</small>
   </div>
 </nav>
 

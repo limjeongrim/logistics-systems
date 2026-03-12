@@ -1,200 +1,236 @@
 {% extends "base.html" %}
-{% block title %}노선{% endblock %}
-{% block page_title %}노선 &amp; 최적화{% endblock %}
+{% block title %}노선 최적화{% endblock %}
+{% block page_title %}노선 & 경로 최적화{% endblock %}
 
 {% block content %}
 <div class="page-header">
-  <h1>노선 &amp; 최적화</h1>
-  <p>지도에서 활성 노선을 확인하고 최근접 이웃 알고리즘을 이용해 다중 경유지 배송을 최적화하세요</p>
+  <h1>노선 최적화</h1>
+  <p>최근접 이웃법(NN)과 2-Opt 알고리즘을 비교하여 최적 경로를 도출합니다.</p>
 </div>
 
 <div class="row g-4">
-  <!-- Map -->
+  <!-- Active routes map -->
   <div class="col-lg-8">
-    <div class="card mb-4">
-      <div class="card-header">
-        <h5><i class="fa-solid fa-map me-2 text-primary"></i>활성 노선 지도</h5>
-        <div class="d-flex gap-2 align-items-center small">
-          <span style="width:20px;height:3px;background:#3b82f6;display:inline-block;border-radius:2px;"></span> 운송중
-          <span style="width:20px;height:3px;background:#06b6d4;display:inline-block;border-radius:2px;margin-left:8px;"></span> 배차됨
-        </div>
-      </div>
-      <div id="routeMap" style="height:460px;"></div>
-    </div>
-
-    <!-- Optimization result -->
-    {% if opt_result %}
     <div class="card">
       <div class="card-header">
-        <h5><i class="fa-solid fa-bolt me-2 text-warning"></i>
-          최적화 결과 — {{ opt_result.shipment.shipment_number }}
-        </h5>
+        <h5><i class="fa-solid fa-map me-2 text-primary"></i>실시간 운행 노선도</h5>
       </div>
+      <div class="card-body p-0">
+        <div id="routeMap" style="height:420px; border-radius:0 0 8px 8px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Optimization selector -->
+  <div class="col-lg-4">
+    <div class="card mb-3">
+      <div class="card-header"><h6><i class="fa-solid fa-sliders me-2"></i>경로 최적화 대상 선택</h6></div>
       <div class="card-body">
-        {% if opt_result.changed %}
-        <div class="alert alert-success mb-3">
-          <i class="fa-solid fa-circle-check me-2"></i>
-          노선 최적화 완료! <strong>{{ opt_result.saved_km }} km</strong> 단축
-          ({{ opt_result.orig_dist }} → {{ opt_result.opt_dist }} km)
-        </div>
+        {% if multi_stop %}
+        <form method="GET">
+          <div class="mb-3">
+            <label class="form-label fw-600">화물 선택</label>
+            <select name="optimize" class="form-select" onchange="this.form.submit()">
+              <option value="">— 화물 선택 —</option>
+              {% for s in multi_stop %}
+              <option value="{{ s.id }}" {% if selected_id == s.id %}selected{% endif %}>
+                {{ s.shipment_number }} — {{ s.customer_name }}
+                (경유 {{ s.stops|length }}개)
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+        </form>
         {% else %}
-        <div class="alert alert-info mb-3">
-          <i class="fa-solid fa-circle-info me-2"></i>
-          현재 노선이 이미 최적입니다 ({{ opt_result.orig_dist }} km).
+        <div class="text-muted small text-center py-2">
+          경유지가 있는 화물이 없습니다.
         </div>
         {% endif %}
 
-        <div class="row g-3">
-          <div class="col-sm-6">
-            <h6 class="fw-600 mb-2 text-muted small">기존 순서</h6>
-            {% for stop in opt_result.original %}
-            <div class="stop-card">
-              <div class="stop-idx {% if loop.first %}origin{% elif loop.last %}destination{% endif %}">
-                {{ loop.index }}
-              </div>
-              <div>
-                <div class="small fw-500">{{ stop.address }}</div>
-                <div class="text-muted" style="font-size:.72rem;">{{ stop.type | title }}</div>
-              </div>
-            </div>
-            {% endfor %}
-            <div class="text-muted small mt-1">
-              <i class="fa-solid fa-road me-1"></i>합계: {{ opt_result.orig_dist }} km
-            </div>
+        <!-- Algorithm explainer -->
+        <div class="mt-3 pt-3 border-top">
+          <div class="small fw-600 text-muted mb-2">알고리즘 설명</div>
+          <div class="mb-2 small">
+            <span class="badge bg-warning-subtle text-warning border border-warning-subtle me-1">NN</span>
+            <strong>최근접 이웃법</strong> — 현재 위치에서 가장 가까운 미방문 경유지를 순서대로 선택
           </div>
-          <div class="col-sm-6">
-            <h6 class="fw-600 mb-2 text-primary small">최적화 순서</h6>
-            {% for stop in opt_result.optimized %}
-            <div class="stop-card">
-              <div class="stop-idx {% if loop.first %}origin{% elif loop.last %}destination{% endif %}">
-                {{ loop.index }}
-              </div>
-              <div>
-                <div class="small fw-500">{{ stop.address }}</div>
-                <div class="text-muted" style="font-size:.72rem;">{{ stop.type | title }}</div>
-              </div>
-            </div>
-            {% endfor %}
-            <div class="text-primary small mt-1 fw-600">
-              <i class="fa-solid fa-road me-1"></i>합계: {{ opt_result.opt_dist }} km
-              {% if opt_result.changed %}
-              <span class="text-success ms-1">({{ opt_result.saved_km }} km 단축)</span>
-              {% endif %}
-            </div>
+          <div class="small">
+            <span class="badge bg-success-subtle text-success border border-success-subtle me-1">2-Opt</span>
+            <strong>2-Opt 개선</strong> — 경로 구간을 반복 역전시켜 교차를 제거하는 로컬 서치
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Algorithm comparison results -->
+    {% if opt_result %}
+    <div class="card">
+      <div class="card-header"><h6><i class="fa-solid fa-code-compare me-2"></i>알고리즘 비교 결과</h6></div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead class="table-light">
+              <tr>
+                <th class="small">지표</th>
+                <th class="small text-center">원래</th>
+                <th class="small text-center">NN</th>
+                <th class="small text-center">2-Opt</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="small text-muted">거리 (km)</td>
+                <td class="text-center fw-600">{{ opt_result.orig_dist }}</td>
+                <td class="text-center fw-600 {% if opt_result.nn_dist < opt_result.orig_dist %}text-success{% endif %}">{{ opt_result.nn_dist }}</td>
+                <td class="text-center fw-600 {% if opt_result.opt2_dist < opt_result.orig_dist %}text-success{% endif %}">{{ opt_result.opt2_dist }}</td>
+              </tr>
+              <tr>
+                <td class="small text-muted">단축 (km)</td>
+                <td class="text-center text-muted">—</td>
+                <td class="text-center text-success fw-600">{% if opt_result.nn_saved_km > 0 %}-{{ opt_result.nn_saved_km }}{% else %}—{% endif %}</td>
+                <td class="text-center text-success fw-600">{% if opt_result.opt2_saved_km > 0 %}-{{ opt_result.opt2_saved_km }}{% else %}—{% endif %}</td>
+              </tr>
+              <tr>
+                <td class="small text-muted">절감 시간</td>
+                <td class="text-center text-muted">—</td>
+                <td class="text-center text-primary fw-600">{% if opt_result.nn_saved_min > 0 %}-{{ opt_result.nn_saved_min }}분{% else %}—{% endif %}</td>
+                <td class="text-center text-primary fw-600">{% if opt_result.opt2_saved_min > 0 %}-{{ opt_result.opt2_saved_min }}분{% else %}—{% endif %}</td>
+              </tr>
+              <tr>
+                <td class="small text-muted">절감 비용</td>
+                <td class="text-center text-muted">—</td>
+                <td class="text-center text-warning fw-600">{% if opt_result.nn_saved_krw > 0 %}₩{{ opt_result.nn_saved_krw|comma }}{% else %}—{% endif %}</td>
+                <td class="text-center text-warning fw-600">{% if opt_result.opt2_saved_krw > 0 %}₩{{ opt_result.opt2_saved_krw|comma }}{% else %}—{% endif %}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        {% set nn_better = opt_result.nn_saved_km >= opt_result.opt2_saved_km %}
+        {% if opt_result.nn_saved_km > 0 or opt_result.opt2_saved_km > 0 %}
+        <div class="px-3 py-2 bg-success-subtle border-top">
+          <i class="fa-solid fa-circle-check text-success me-1"></i>
+          <span class="small fw-600 text-success">
+            {% if nn_better %}NN{% else %}2-Opt{% endif %}이 최적
+            — {{ opt_result.nn_saved_km if nn_better else opt_result.opt2_saved_km }} km 절감
+          </span>
+        </div>
+        {% else %}
+        <div class="px-3 py-2 bg-info-subtle border-top">
+          <span class="small text-info">원래 경로가 이미 최적화됨</span>
+        </div>
+        {% endif %}
       </div>
     </div>
     {% endif %}
   </div>
+</div>
 
-  <!-- Right panel -->
-  <div class="col-lg-4">
-    <!-- Route optimizer form -->
-    <div class="card mb-4">
-      <div class="card-header">
-        <h5><i class="fa-solid fa-wand-magic-sparkles me-2 text-warning"></i>노선 최적화</h5>
-      </div>
-      <div class="card-body">
-        <p class="small text-muted mb-3">
-          중간 경유지가 있는 운송을 선택하여 <strong>최근접 이웃</strong> 휴리스틱(탐욕적 TSP 근사)으로
-          경유 순서를 최적화하세요.
-        </p>
-        {% if multi_stop %}
-        <form method="GET">
-          <label class="form-label">경유지 있는 운송</label>
-          <select class="form-select mb-3" name="optimize">
-            <option value="">— 운송 선택 —</option>
-            {% for s in multi_stop %}
-            <option value="{{ s.id }}" {% if selected_id == s.id %}selected{% endif %}>
-              {{ s.shipment_number }} — {{ s.stops|length }} 경유지
-              ({{ s.origin_address.split(',')[0] }} → {{ s.destination_address.split(',')[0] }})
-            </option>
-            {% endfor %}
-          </select>
-          <button type="submit" class="btn btn-warning w-100">
-            <i class="fa-solid fa-bolt me-2"></i>노선 최적화
-          </button>
-        </form>
-        {% else %}
-        <div class="text-center text-muted py-3">
-          <i class="fa-solid fa-route fa-2x mb-2 d-block opacity-25"></i>
-          <small>경유지가 있는 운송이 없습니다.<br>
-          운송 등록 시 중간 경유지를 추가하세요.</small>
-        </div>
-        {% endif %}
-      </div>
+<!-- Before/after comparison map -->
+{% if opt_result %}
+<div class="card mt-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5><i class="fa-solid fa-arrows-left-right me-2 text-primary"></i>
+      경로 비교: {{ opt_result.shipment.shipment_number }}
+    </h5>
+    <div class="d-flex gap-3 small">
+      <span class="d-flex align-items-center gap-1">
+        <div style="width:18px;height:3px;background:#94a3b8;"></div>원래
+      </span>
+      <span class="d-flex align-items-center gap-1">
+        <div style="width:18px;height:3px;background:#f59e0b;"></div>NN
+      </span>
+      <span class="d-flex align-items-center gap-1">
+        <div style="width:18px;height:3px;background:#22c55e;"></div>2-Opt
+      </span>
     </div>
-
-    <!-- Active routes legend -->
-    <div class="card">
-      <div class="card-header"><h6><i class="fa-solid fa-list me-2"></i>활성 노선</h6></div>
-      <div class="card-body p-0" style="max-height:360px;overflow-y:auto;">
-        {% set routes = routes_geo | from_json %}
-        {% if routes %}
-        {% for r in routes %}
-        <div class="d-flex align-items-start gap-2 px-3 py-2" style="border-bottom:1px solid #f1f5f9;">
-          <div style="width:12px;height:12px;border-radius:50%;background:{{ r.color }};margin-top:4px;flex-shrink:0;"></div>
-          <div>
-            <div class="small fw-600">{{ r.number }}</div>
-            <div class="text-muted" style="font-size:.72rem;">{{ r.customer }}</div>
-            <div style="font-size:.7rem;color:#94a3b8;">
-              {{ r.origin.split(',')[0] }} → {{ r.dest.split(',')[0] }}
-            </div>
-          </div>
-          <span class="badge bg-{{ 'primary' if r.status == 'in_transit' else 'info' }}-subtle
-                       text-{{ 'primary' if r.status == 'in_transit' else 'info' }} ms-auto"
-                style="font-size:.65rem;">
-            {{ r.status.replace('_',' ') }}
-          </span>
+  </div>
+  <div class="card-body p-0">
+    <div id="comparisonMap" style="height:380px;"></div>
+  </div>
+  <div class="card-footer">
+    <div class="row g-3">
+      <div class="col-md-4">
+        <div class="small fw-600 text-muted mb-1">원래 순서 ({{ opt_result.orig_dist }} km)</div>
+        {% for stop in opt_result.original %}
+        <div class="d-flex align-items-center gap-1 mb-1">
+          <span class="badge bg-secondary-subtle text-secondary border" style="font-size:.65rem;min-width:22px;">{{ loop.index }}</span>
+          <span class="small text-muted">{{ stop.address }}</span>
         </div>
         {% endfor %}
-        {% else %}
-        <div class="text-center text-muted py-4 small">활성 노선이 없습니다.</div>
-        {% endif %}
+      </div>
+      <div class="col-md-4">
+        <div class="small fw-600 text-warning mb-1">NN 순서 ({{ opt_result.nn_dist }} km)</div>
+        {% for stop in opt_result.nn_stops %}
+        <div class="d-flex align-items-center gap-1 mb-1">
+          <span class="badge bg-warning-subtle text-warning border border-warning-subtle" style="font-size:.65rem;min-width:22px;">{{ loop.index }}</span>
+          <span class="small text-muted">{{ stop.address }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="col-md-4">
+        <div class="small fw-600 text-success mb-1">2-Opt 순서 ({{ opt_result.opt2_dist }} km)</div>
+        {% for stop in opt_result.opt2_stops %}
+        <div class="d-flex align-items-center gap-1 mb-1">
+          <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size:.65rem;min-width:22px;">{{ loop.index }}</span>
+          <span class="small text-muted">{{ stop.address }}</span>
+        </div>
+        {% endfor %}
       </div>
     </div>
   </div>
 </div>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
 <script>
-const routesData = {{ routes_geo | safe }};
-{% if opt_result %}
-const optOriginal  = {{ opt_result.original  | tojson }};
-const optOptimized = {{ opt_result.optimized | tojson }};
-{% endif %}
-
-const map = L.map('routeMap').setView([36.5, 127.5], 7);
+const routesGeo = {{ routes_geo | safe }};
+const routeMap  = L.map('routeMap');
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '© OpenStreetMap contributors', maxZoom: 18
-}).addTo(map);
+  attribution: '© OpenStreetMap contributors'
+}).addTo(routeMap);
 
-// Draw all active routes
-routesData.forEach(r => {
-  if (r.coords.length < 2) return;
-  L.polyline(r.coords, { color: r.color, weight: 3, opacity: .75 }).addTo(map)
-   .bindTooltip(`${r.number} — ${r.customer}`, { permanent: false });
-
-  // Origin marker
-  const startIcon = L.divIcon({
-    html: `<div style="background:${r.color};width:10px;height:10px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3);"></div>`,
-    className: '', iconSize: [10, 10], iconAnchor: [5, 5]
+if (routesGeo.length) {
+  const allCoords = [];
+  routesGeo.forEach(r => {
+    L.polyline(r.coords, {color: r.color, weight: 4, opacity: .8})
+     .bindPopup(`<b>${r.number}</b><br>${r.customer}<br>${r.origin} → ${r.dest}`)
+     .addTo(routeMap);
+    r.coords.forEach(c => allCoords.push(c));
   });
-  L.marker(r.coords[0], { icon: startIcon }).addTo(map)
-   .bindPopup(`<b>${r.number}</b><br>${r.customer}<br>${r.origin} → ${r.dest}`);
-});
+  if (allCoords.length) routeMap.fitBounds(allCoords, {padding: [30,30]});
+} else {
+  routeMap.setView([36.5, 127.5], 7);
+}
 
 {% if opt_result %}
-// Show optimized route in different color
-L.polyline(optOptimized.map(s => [s.lat, s.lng]),
-  { color: '#f59e0b', weight: 4, dashArray: '6 4', opacity: .9 }).addTo(map)
-  .bindTooltip('최적화 노선', { permanent: false });
-{% endif %}
+const origStops = {{ opt_result.original  | tojson }};
+const nnStops   = {{ opt_result.nn_stops  | tojson }};
+const opt2Stops = {{ opt_result.opt2_stops| tojson }};
 
-if (routesData.length === 0) {
-  map.setView([36.5, 127.5], 7);
-}
+const cMap = L.map('comparisonMap');
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap contributors'
+}).addTo(cMap);
+
+const toCoords = s => s.map(p => [p.lat, p.lng]);
+L.polyline(toCoords(origStops), {color:'#94a3b8', weight:3, dashArray:'6,4'})
+ .bindPopup('원래 경로: {{ opt_result.orig_dist }} km').addTo(cMap);
+L.polyline(toCoords(nnStops),   {color:'#f59e0b', weight:3})
+ .bindPopup('NN 최적화: {{ opt_result.nn_dist }} km').addTo(cMap);
+L.polyline(toCoords(opt2Stops), {color:'#22c55e', weight:3})
+ .bindPopup('2-Opt 최적화: {{ opt_result.opt2_dist }} km').addTo(cMap);
+
+origStops.forEach((s, i) => {
+  const isFirst = i === 0, isLast = i === origStops.length - 1;
+  const bg = isFirst ? '#22c55e' : isLast ? '#ef4444' : '#64748b';
+  const icon = L.divIcon({
+    html: `<div style="background:${bg};color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.3);">${i+1}</div>`,
+    iconSize:[24,24], iconAnchor:[12,12], className:''
+  });
+  L.marker([s.lat,s.lng], {icon}).bindPopup(s.address).addTo(cMap);
+});
+cMap.fitBounds(toCoords(origStops), {padding:[40,40]});
+{% endif %}
 </script>
 {% endblock %}
