@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip install:*)",
+      "Bash(python:*)",
+      "Bash(find /c/projects/logistics-systems/wms/templates -type f -name \"*.html\" 2>/dev/null | sort)",
+      "Bash(cd /c/projects/logistics-systems/wms && rm -f wms.db && echo \"DB deleted\")",
+      "Bash(pkill -f \"python app.py\" 2>/dev/null; sleep 1; echo \"killed\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5000/ && echo \"\" && \\\\\ncurl -s -o /dev/null -w \"%{http_code}\" http://localhost:5000/warehouse-map && echo \"\" && \\\\\ncurl -s -o /dev/null -w \"%{http_code}\" http://localhost:5000/barcode && echo \"\" && \\\\\ncurl -s -o /dev/null -w \"%{http_code}\" http://localhost:5000/suppliers && echo \"\" && \\\\\ncurl -s -o /dev/null -w \"%{http_code}\" http://localhost:5000/purchase-orders && echo \"\" && \\\\\ncurl -s -o /dev/null -w \"%{http_code}\" http://localhost:5000/forecast && echo \"\" && \\\\\ncurl -s -o /dev/null -w \"%{http_code}\" \"http://localhost:5000/api/product-by-barcode/8801234560001\")",
+      "Bash(\\\\ git:*)",
+      "Bash(git push:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(cd:*)",
+      "Bash(find:*)",
+      "Bash(pip show:*)",
+      "Bash(py:*)",
+      "Bash(npm install:*)",
+      "Bash(node -e \"const fs=require\\(''fs''\\); const pkg=JSON.parse\\(fs.readFileSync\\(''package.json''\\)\\); console.log\\(''leaflet:'', pkg.dependencies.leaflet\\)\")",
+      "Bash(grep -c fullfit.com.*2026 C:/Users/임정림/Desktop/fullfit/backend/main.py)",
+      "Bash(ollama pull:*)",
+      "Bash(ollama list:*)",
+      "Bash(git -C \"C:/Users/임정림/Desktop/fullfit\" status)",
+      "Bash(git *)"
+    ]
+  }
+}
